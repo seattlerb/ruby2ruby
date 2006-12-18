@@ -1,0 +1,14 @@
+== 1.1.1 / 2006-11-13
+
+* 3 bug fixes
+  * Fixed procs
+  * Cleaned return when no return values.
+  * Rewrote process_if. No more elsif but no more bugs. :)
+
+== 1.1.0 / 2006-10-11
+
+* 2 major enhancements
+  * Released separately from ZenHacks.
+  * Major overhaul/audit from the new ParseTree test infrastructure. Very complete now.
+
+
