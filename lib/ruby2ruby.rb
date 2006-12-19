@@ -113,7 +113,18 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_attrasgn(exp)
-    process_call(exp)
+    receiver = process exp.shift
+    name = exp.shift
+    args = exp.shift
+
+    case name
+    when :[]= then
+      lhs = process args.delete_at(1)
+      args[0] = :arglist
+      "#{receiver}[#{lhs}] = #{process(args)}"
+    else
+      "#{receiver}.#{name.to_s[0..-2]} = #{process(args)[1..-2]}"
+    end
   end
 
   def process_back_ref(exp)
@@ -200,7 +211,12 @@ class RubyToRuby < SexpProcessor
 
   def process_case(exp)
     result = []
-    result << "case #{process exp.shift}"
+    expr = process exp.shift
+    if expr then
+      result << "case #{expr}"
+    else
+      result << "case"
+    end
     until exp.empty?
       pt = exp.shift
       if pt and pt.first == :when
