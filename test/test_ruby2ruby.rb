@@ -49,8 +49,8 @@ class TestRubyToRuby < Test::Unit::TestCase
 
   ParseTreeTestCase.testcases.each do |node, data|
     define_method :"test_#{node}" do
-      pt = data['ParseTree']
-      rb = data['Ruby2Ruby'] || data['Ruby']
+      pt = data['ParseTree'].deep_clone
+      rb = (data['Ruby2Ruby'] || data['Ruby']).deep_clone
 
       result = @processor.process(pt)
 
@@ -59,11 +59,6 @@ class TestRubyToRuby < Test::Unit::TestCase
       assert_equal rb, result
     end
   end
-
-
-end
-
-class R2RTest < Test::Unit::TestCase
 
   def test_self_translation
     r2r2r = RubyToRuby.translate(RubyToRuby).sub("RubyToRuby","RubyToRubyToRuby")
@@ -80,7 +75,7 @@ class R2RTest < Test::Unit::TestCase
     assert_equal(r2r2r, r2r2r2, "first generation must equal second generation")
     assert_equal(r2r2r, r2r2r2r, "first generation must equal third generation")
   end
-  
+
   def hairy_method(z,x=10,y=20*z.abs,&blok)
     n = 1 + 2 * 40.0 / (z - 2)
     retried = false
@@ -92,7 +87,7 @@ class R2RTest < Test::Unit::TestCase
       raise n
     rescue RuntimeError => e
       raise if n != e.message
-      n = lambda do |i| 
+      n = lambda do |i|
         lambda do |j|
           "#{i} #{z+2*2} #{j.message.reverse}"
         end
@@ -102,7 +97,7 @@ class R2RTest < Test::Unit::TestCase
         retry
       end
     rescue ArgumentError => e
-      e.message  
+      e.message
     rescue
     end
   ensure
@@ -111,18 +106,18 @@ class R2RTest < Test::Unit::TestCase
 
   def foobar a, &block; block.call(a) end
   def k; foobar [1,2,3].each { |x| x*2 } do |x| x*2 end end
-  
+
   def test_block_precedence_escape
     eval RubyToRuby.translate(self.class, :k).sub(" k"," l")
     assert_equal(k, l)
   end
-  
+
   def test_hairy_method
     src = RubyToRuby.translate(self.class, :hairy_method).sub(" h", " f")
 
     eval src
-    
-    blk = lambda{|x,y,z,arr| 
+
+    blk = lambda{|x,y,z,arr|
       unless y
         x.to_i*2
       else
@@ -137,3 +132,17 @@ class R2RTest < Test::Unit::TestCase
     assert_equal("ensure a-working", x1)
   end
 end
+
+# TODO: pass your tests through yourself and run them again
+# r2r2 = RubyToRuby.translate(RubyToRuby).sub("RubyToRuby","RubyToRuby2")
+# begin
+#   Object.class_eval r2r2
+# rescue SyntaxError => e
+#   $stderr.puts r2r2
+#   flunk "syntax error, see above (#{e.inspect})"
+# end
+# class TestRubyToRubyToRuby < TestRubyToRuby
+#   def setup
+#     @processor = RubyToRuby2.new
+#   end
+# end
