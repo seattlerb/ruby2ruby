@@ -11,7 +11,7 @@ class NilClass # Objective-C trick
 end
 
 class RubyToRuby < SexpProcessor
-  VERSION = '1.1.2'
+  VERSION = '1.1.3'
 
   def self.translate(klass_or_str, method = nil)
     self.new.process(ParseTree.translate(klass_or_str, method))

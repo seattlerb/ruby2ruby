@@ -46,32 +46,27 @@ class TestRubyToRuby < Test::Unit::TestCase
     assert_equal out, @processor.rewrite_resbody(inn)
   end
 
-  ParseTreeTestCase.testcases.each do |node, data|
-    define_method :"test_#{node}" do
-      pt = data['ParseTree'].deep_clone
-      rb = (data['Ruby2Ruby'] || data['Ruby']).deep_clone
+  eval ParseTreeTestCase.testcases.map { |node, data|
+    "def test_#{node}
+       pt = #{data['ParseTree'].inspect}
+       rb = #{(data['Ruby2Ruby'] || data['Ruby']).inspect}
 
-      result = @processor.process(pt)
+       assert_not_nil pt, \"ParseTree for #{node} undefined\"
+       assert_not_nil rb, \"Ruby for #{node} undefined\"
 
-      assert_not_nil pt, "ParseTree for #{node} undefined"
-      assert_not_nil rb, "Ruby for #{node} undefined"
-      assert_equal rb, result
-    end
-  end
+       assert_equal rb, @processor.process(pt)
+     end"
+  }.join("\n")
 end
 
 # Self-Translation: 1st Generation
 eval RubyToRuby.translate(RubyToRuby).sub("RubyToRuby", "RubyToRuby2")
+
 class TestRubyToRuby2 < TestRubyToRuby
   def setup
     @processor = RubyToRuby2.new
   end
 end
 
-# Self-Translation: 2nd Generation
-eval RubyToRuby2.translate(RubyToRuby2).sub("RubyToRuby2", "RubyToRuby3")
-class TestRubyToRuby3 < TestRubyToRuby
-  def setup
-    @processor = RubyToRuby3.new
-  end
-end
+# Self-Translation: 2nd Generation - against the tests this time
+eval RubyToRuby2.translate(TestRubyToRuby).sub("TestRubyToRuby", "TestRubyToRuby3")
