@@ -13,7 +13,7 @@ end
 class RubyToRuby < SexpProcessor
   VERSION = '1.1.2'
 
-  def self.translate(klass_or_str, method=nil)
+  def self.translate(klass_or_str, method = nil)
     self.new.process(ParseTree.translate(klass_or_str, method))
   end
 
@@ -448,7 +448,12 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_iasgn(exp)
-    "#{exp.shift} = #{process exp.shift}"
+    lhs = exp.shift
+    if exp.empty? then # part of an masgn
+      lhs.to_s
+    else
+      "#{lhs} = #{process exp.shift}"
+    end
   end
 
   def cond_indent_process(pt)
@@ -522,7 +527,7 @@ class RubyToRuby < SexpProcessor
 
   def process_masgn(exp)
     lhs = exp.shift
-    rhs = exp.shift
+    rhs = exp.shift rescue nil
 
     assert_type lhs, :array
     lhs.shift

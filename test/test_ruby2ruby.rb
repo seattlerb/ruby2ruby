@@ -46,7 +46,6 @@ class TestRubyToRuby < Test::Unit::TestCase
     assert_equal out, @processor.rewrite_resbody(inn)
   end
 
-
   ParseTreeTestCase.testcases.each do |node, data|
     define_method :"test_#{node}" do
       pt = data['ParseTree'].deep_clone
@@ -59,90 +58,20 @@ class TestRubyToRuby < Test::Unit::TestCase
       assert_equal rb, result
     end
   end
+end
 
-  def test_self_translation
-    r2r2r = RubyToRuby.translate(RubyToRuby).sub("RubyToRuby","RubyToRubyToRuby")
-
-    begin
-      Object.class_eval r2r2r
-    rescue SyntaxError => e
-      $stderr.puts r2r2r
-      flunk "syntax error, see above (#{e.inspect})"
-    end
-
-    r2r2r2 = RubyToRubyToRuby.translate(RubyToRuby).sub("RubyToRuby","RubyToRubyToRuby")
-    r2r2r2r = RubyToRubyToRuby.translate(RubyToRubyToRuby)
-    assert_equal(r2r2r, r2r2r2, "first generation must equal second generation")
-    assert_equal(r2r2r, r2r2r2r, "first generation must equal third generation")
-  end
-
-  def hairy_method(z,x=10,y=20*z.abs,&blok)
-    n = 1 + 2 * 40.0 / (z - 2)
-    retried = false
-    begin
-      raise ArgumentError, n if retried
-      n -= yield x,y,z,[z,x,y].map(&blok)
-      n = n / 1.1 until n < 500 # TODO: translated isn't respecting post iter
-      n = "hop hop #{"%.4f" % n}"
-      raise n
-    rescue RuntimeError => e
-      raise if n != e.message
-      n = lambda do |i|
-        lambda do |j|
-          "#{i} #{z+2*2} #{j.message.reverse}"
-        end
-      end[n].call(e)
-      unless retried
-        retried = true
-        retry
-      end
-    rescue ArgumentError => e
-      e.message
-    rescue
-    end
-  ensure
-    x << "ensure a-working"
-  end
-
-  def foobar a, &block; block.call(a) end
-  def k; foobar [1,2,3].each { |x| x*2 } do |x| x*2 end end
-
-  def test_block_precedence_escape
-    eval RubyToRuby.translate(self.class, :k).sub(" k"," l")
-    assert_equal(k, l)
-  end
-
-  def test_hairy_method
-    src = RubyToRuby.translate(self.class, :hairy_method).sub(" h", " f")
-
-    eval src
-
-    blk = lambda{|x,y,z,arr|
-      unless y
-        x.to_i*2
-      else
-        x.to_i*y*z*arr.inject(1){|s,i| s+i}
-      end
-    }
-    x1 = ""
-    x2 = ""
-    res = [hairy_method(-5,x1,&blk), fairy_method(-5,x2,&blk)]
-    assert_equal(res.first, res.last)
-    assert_equal(x1, x2)
-    assert_equal("ensure a-working", x1)
+# Self-Translation: 1st Generation
+eval RubyToRuby.translate(RubyToRuby).sub("RubyToRuby", "RubyToRuby2")
+class TestRubyToRuby2 < TestRubyToRuby
+  def setup
+    @processor = RubyToRuby2.new
   end
 end
 
-# TODO: pass your tests through yourself and run them again
-# r2r2 = RubyToRuby.translate(RubyToRuby).sub("RubyToRuby","RubyToRuby2")
-# begin
-#   Object.class_eval r2r2
-# rescue SyntaxError => e
-#   $stderr.puts r2r2
-#   flunk "syntax error, see above (#{e.inspect})"
-# end
-# class TestRubyToRubyToRuby < TestRubyToRuby
-#   def setup
-#     @processor = RubyToRuby2.new
-#   end
-# end
+# Self-Translation: 2nd Generation
+eval RubyToRuby2.translate(RubyToRuby2).sub("RubyToRuby2", "RubyToRuby3")
+class TestRubyToRuby3 < TestRubyToRuby
+  def setup
+    @processor = RubyToRuby3.new
+  end
+end
