@@ -148,18 +148,11 @@ class RubyToRuby < SexpProcessor
     result = []
 
     until exp.empty? do
-      found = exp.first.first == :block_arg rescue false
-
-      if found then
-        raise "wtf"
-        result[-1] = result[-1][0..-2] + ", #{process(exp.shift)})"
+      code = exp.shift
+      if code.nil? or code.first == :nil then
+        result << "# do nothing"
       else
-        code = exp.shift
-        if code.nil? or code.first == :nil then
-          result << "# do nothing"
-        else
-          result << process(code)
-        end
+        result << process(code)
       end
     end
 
@@ -479,11 +472,17 @@ class RubyToRuby < SexpProcessor
     f = process exp.shift
 
     if t then
+      unless f then
+        r = "#{t} if #{c}"
+        return r if (@indent+r).size < 78 and r !~ /\n/
+      end
       r = "if #{c} then\n#{indent(t)}\n"
       r << "else\n#{indent(f)}\n" if f
       r << "end"
       r
     else
+      r = "#{f} unless #{c}"
+      return r if (@indent+r).size < 78 and r !~ /\n/
       "unless #{c} then\n#{indent(f)}\nend"
     end
   end
@@ -885,7 +884,8 @@ class RubyToRuby < SexpProcessor
       end
     when :bmethod then
       body.shift # :bmethod
-      if body.first.first == :dasgn_curr then
+      case body.first.first
+      when :dasgn_curr then
         # WARN: there are some implications here of having an empty
         # :args below namely, "proc { || " does not allow extra args
         # passed in.
@@ -894,7 +894,14 @@ class RubyToRuby < SexpProcessor
         dasgn.shift # type
         args.push(*dasgn)
         body.find_and_replace_all(:dvar, :lvar)
+      when :masgn then
+        dasgn = body.shift
+        assert_type dasgn, :masgn
+        splat = :"*#{dasgn[-1][-1]}"
+        args.push(splat)
+        body.find_and_replace_all(:dvar, :lvar)
       end
+
       if body.first.first == :block then
         body = s(:scope, body.shift)
       else
@@ -903,12 +910,9 @@ class RubyToRuby < SexpProcessor
     when :dmethod
       # BEFORE: [:defn, :dmethod_added, [:dmethod, :bmethod_maker, ...]]
       # AFTER:  [:defn, :dmethod_added, ...]
-      iter = body[2][1][2] # UGH! FIX
-      iter.delete_at 1 # fcall define_method
-      args = iter[1].find_and_replace_all(:dasgn_curr, :args)
-      iter.delete_at 1 # args
-      iter[0] = :block
-      body = s(:scope, iter.find_and_replace_all(:dvar, :lvar))
+      body[0] = :scope
+      body.delete_at 1 # method name
+      args = body.scope.block.args(true)
     when :ivar, :attrset then
       # do nothing
     else
