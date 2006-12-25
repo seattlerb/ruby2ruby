@@ -11,7 +11,7 @@ class NilClass # Objective-C trick
 end
 
 class RubyToRuby < SexpProcessor
-  VERSION = '1.1.3'
+  VERSION = '1.1.4'
 
   def self.translate(klass_or_str, method = nil)
     self.new.process(ParseTree.translate(klass_or_str, method))
@@ -279,10 +279,23 @@ class RubyToRuby < SexpProcessor
     "#{exp.shift} = #{process(exp.shift)}"
   end
 
+  # (a, lit1)      => "a = 1"
+  # (a, (b, lit2)) => "a = b = 2"
+  # (a, (b))       => ""
+
   def process_dasgn_curr(exp)
-    s = exp.shift.to_s
-    s += "=" + process(exp.shift) unless exp.empty?
-    s
+    lhs = exp.shift.to_s
+    rhs = exp.shift
+    return lhs if rhs.nil?
+    return "#{lhs} = #{process rhs}" unless rhs.first == :dasgn_curr
+
+    # keep recursing. ensure that the leaf node assigns to _something_
+    rhs = process rhs
+    if rhs =~ /=/ then
+      "#{lhs} = #{rhs}"
+    else
+      ""
+    end
   end
 
   def process_dasgn(exp)
@@ -493,7 +506,7 @@ class RubyToRuby < SexpProcessor
     result << " |#{args}|" if args
     if body then
       result << "\n"
-      result << indent(body).chomp
+      result << indent(body.strip)
       result << "\n"
     else
       result << ' '
@@ -697,7 +710,7 @@ class RubyToRuby < SexpProcessor
         code << "else"
         code << indent(els)
       else
-        code << "end\n"
+        code << "end\n" unless stack.first == "process_block"
       end
       code.join("\n")
     else # a rescue b and others
