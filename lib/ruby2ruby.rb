@@ -229,23 +229,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_class(exp)
-    s = "class #{exp.shift}"
-    superk = process(exp.shift)
-
-    s << " < #{superk}" if superk
-    s << "\n"
-
-    body = []
-    begin
-      code = process(exp.shift).chomp
-      body << code unless code.nil? or code.empty?
-    end until exp.empty?
-    unless body.empty? then
-      body = indent(body.join("\n\n")) + "\n"
-    else
-      body = ""
-    end
-    s + body + "end"
+    "class #{util_module_or_class(exp, true)}"
   end
 
   def process_colon2(exp)
@@ -380,16 +364,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_dsym(exp)
-    s = ":" + exp.shift.dump[0..-2]
-    until exp.empty?
-      pt = exp.shift
-      if pt.first == :str
-        s << process(pt)[1..-2]
-      else
-        s << '#{' + process(pt) + '}'
-      end
-    end
-    s + '"'
+    ":" + process_dstr(exp)
   end
 
   def process_dvar(exp)
@@ -573,18 +548,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_module(exp)
-    s = "module #{exp.shift}\n"
-    body = []
-    begin
-      code = process exp.shift
-      body << code unless code.nil? or code.empty?
-    end until exp.empty?
-    unless body.empty? then
-      body = indent(body.join("\n\n")) + "\n"
-    else
-      body = ""
-    end
-    s + body + "end"
+    "module #{util_module_or_class(exp)}"
   end
 
   def process_next(exp)
@@ -873,14 +837,33 @@ class RubyToRuby < SexpProcessor
       assert_type body[1], :block
     when :scope, :fbody then
       body = body[1] if body.first == :fbody
-      args = body.last.delete_at 1
-      assert_type args, :args
-      assert_type body, :scope
-      assert_type body[1], :block
+      case body.first
+      when :scope then
+        args = body.block.args(true)
+        assert_type body, :scope
+        assert_type body[1], :block
 
-      if body[1][1].first == :block_arg then
-        block_arg = body[1].delete_at 1
-        args << block_arg
+        if body[1][1].first == :block_arg then
+          block_arg = body[1].delete_at 1
+          args << block_arg
+        end
+      when :bmethod then
+        body[0] = :scope
+        body.block.delete_at(1) # nuke the decl # REFACTOR
+        masgn = body.masgn(true)
+        if masgn then
+          splat = :"*#{masgn[-1][-1]}"
+          args.push(splat)
+        else
+          dasgn_curr = body.dasgn_curr(true)
+          if dasgn_curr then
+            arg = :"*#{dasgn_curr[-1]}"
+            args.push(arg)
+          end
+        end
+        body.find_and_replace_all(:dvar, :lvar)
+      else
+        raise "no: #{body.first} / #{body.inspect}"
       end
     when :bmethod then
       body.shift # :bmethod
@@ -895,8 +878,9 @@ class RubyToRuby < SexpProcessor
         args.push(*dasgn)
         body.find_and_replace_all(:dvar, :lvar)
       when :masgn then
-        dasgn = body.shift
-        assert_type dasgn, :masgn
+        dasgn = body.masgn(true)
+        # DAMNIT body.block.dasgn_curr(true) - multiple values so can't use
+        body.block.delete_at(1) # nuke the decl
         splat = :"*#{dasgn[-1][-1]}"
         args.push(splat)
         body.find_and_replace_all(:dvar, :lvar)
@@ -959,6 +943,29 @@ class RubyToRuby < SexpProcessor
 
   ############################################################
   # Utility Methods:
+
+  def util_module_or_class(exp, is_class=false)
+    s = "#{exp.shift}"
+
+    if is_class then
+      superk = process(exp.shift)
+      s << " < #{superk}" if superk
+    end
+
+    s << "\n"
+
+    body = []
+    begin
+      code = process(exp.shift).chomp
+      body << code unless code.nil? or code.empty?
+    end until exp.empty?
+    unless body.empty? then
+      body = indent(body.join("\n\n")) + "\n"
+    else
+      body = ""
+    end
+    s + body + "end"
+  end
 
   def indent(s)
     s.to_s.map{|line| @indent + line}.join

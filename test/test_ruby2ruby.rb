@@ -10,6 +10,40 @@ class TestRubyToRuby < Test::Unit::TestCase
     @processor = RubyToRuby.new
   end
 
+  def test_rewrite_defn_define_method
+    inn = s(:defn, :splatted,
+            s(:bmethod,
+              s(:masgn, s(:dasgn_curr, :args)),
+              s(:block,
+                s(:dasgn_curr, :y),
+                s(:dasgn_curr, :y, s(:call, s(:dvar, :args), :first)),
+                s(:call, s(:dvar, :y), :+, s(:array, s(:lit, 42))))))
+    out = s(:defn, :splatted,
+            s(:args, :"*args"),
+            s(:scope,
+              s(:block,
+                s(:dasgn_curr, :y, s(:call, s(:lvar, :args), :first)),
+                s(:call, s(:lvar, :y), :+, s(:array, s(:lit, 42))))))
+
+    assert_equal out, @processor.rewrite_defn(inn)
+  end
+
+  def test_rewrite_defn_bmethod
+    inn = s(:defn, :group,
+            s(:fbody,
+              s(:bmethod,
+                s(:masgn, s(:dasgn_curr, :params)),
+                s(:block,
+                  s(:dasgn_curr, :force_reload, s(:dasgn_curr, :association, s(:dasgn_curr, :retval))),
+                  s(:lit, 42)))))
+    out = s(:defn, :group,
+            s(:args, :"*params"),
+            s(:scope,
+              s(:block, s(:lit, 42))))
+
+    assert_equal out, @processor.rewrite_defn(inn)
+  end
+
   def test_rewrite_resbody
     inn = [:resbody,
            [:array, [:const, :SyntaxError]],
@@ -60,7 +94,15 @@ class TestRubyToRuby < Test::Unit::TestCase
 end
 
 # Self-Translation: 1st Generation
-eval RubyToRuby.translate(RubyToRuby).sub("RubyToRuby", "RubyToRuby2")
+ruby = RubyToRuby.translate(RubyToRuby).sub("RubyToRuby", "RubyToRuby2")
+begin
+  eval ruby
+rescue SyntaxError => e
+  puts "SyntaxError: #{e.message}"
+  puts
+  puts ruby
+  exit 1
+end
 
 class TestRubyToRuby2 < TestRubyToRuby
   def setup
