@@ -821,6 +821,12 @@ class RubyToRuby < SexpProcessor
     rewrite_defn(exp)
   end
 
+  # s(:defn, :name, s(:scope, s(:block, s(:args, ...), ...)))
+  # s(:defn, :name, s(:bmethod, s(:masgn, s(:dasgn_curr, :args)), s(:block, ...)))
+  # s(:defn, :name, s(:fbody, s(:bmethod, s(:masgn, s(:dasgn_curr, :params)), s(:block, ...))))
+  # =>
+  # s(:defn, :name, s(:args, ...), s(:scope, s:(block, ...)))
+
   def rewrite_defn(exp)
     # REFACTOR this needs help now
     exp.shift # :defn
@@ -1027,8 +1033,11 @@ class Proc
   end
 
   def to_ruby
-    name = ProcStoreTmp.name
-    self.to_method.to_ruby.sub(/def [^\(]+\(([^\)]*)\)/,
-                               'proc { |\1|').sub(/end\Z/, '}')
+    ruby = self.to_method.to_ruby
+    ruby.sub!(/\A(def \S+)\(([^\)]*)\)/, '\1 |\2|')     # move args
+    ruby.sub!(/\Adef[^\n\|]+/, 'proc { ')               # strip def name
+    ruby.sub!(/end\Z/, '}')                             # strip end
+    ruby.gsub!(/\s+$/, '')                              # trailing WS bugs me
+    ruby
   end
 end
