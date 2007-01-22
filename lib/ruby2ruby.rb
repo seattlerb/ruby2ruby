@@ -11,7 +11,7 @@ class NilClass # Objective-C trick
 end
 
 class RubyToRuby < SexpProcessor
-  VERSION = '1.1.4'
+  VERSION = '1.1.5'
 
   def self.translate(klass_or_str, method = nil)
     self.new.process(ParseTree.translate(klass_or_str, method))
@@ -166,9 +166,20 @@ class RubyToRuby < SexpProcessor
   def process_block_pass(exp)
     bname = [:lvar, "&" + process(exp.shift)]
     call = exp.shift
-    has_args = Array === call.last and call.last.first == :array
-    call << [:array] unless has_args
-    call.last << bname
+
+    if Array === call.last then # HACK - I _really_ need rewrites to happen first
+      case call.last.first
+      when :splat then
+        call << [:array, call.pop]
+      when :array then
+        # do nothing
+      else
+        call << [:array] unless has_args
+      end
+      call.last << bname
+    else
+      call << [:array, bname]
+    end
 
     process(call)
   end
