@@ -44,20 +44,6 @@ class TestRubyToRuby < Test::Unit::TestCase
     assert_equal out, @processor.rewrite_defn(inn)
   end
 
-  def test_rails_sucks # REFACTOR: promote to PTTC
-    inn = s(:defn,
-            :blah,
-            s(:scope,
-              s(:block,
-                s(:args, :"*args"),
-                s(:block_arg, :block),
-                s(:block_pass,
-                  s(:lvar, :block),
-                  s(:fcall, :other, s(:splat, s(:lvar, :args)))))))
-    out = "def blah(*args, &block)\n  other(*args, &block)\nend"
-    assert_equal out, @processor.process(inn)
-  end
-
   def test_rewrite_resbody
     inn = [:resbody,
            [:array, [:const, :SyntaxError]],

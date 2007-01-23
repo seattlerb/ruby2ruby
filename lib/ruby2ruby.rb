@@ -123,7 +123,11 @@ class RubyToRuby < SexpProcessor
       args[0] = :arglist
       "#{receiver}[#{lhs}] = #{process(args)}"
     else
-      "#{receiver}.#{name.to_s[0..-2]} = #{process(args)[1..-2]}"
+      if args then
+        "#{receiver}.#{name.to_s[0..-2]} = #{process(args)[1..-2]}"
+      else
+        "#{receiver}.#{name.to_s[0..-2]}"
+      end
     end
   end
 
@@ -164,7 +168,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_block_pass(exp)
-    bname = [:lvar, "&" + process(exp.shift)]
+    bname = [:block_arg, process(exp.shift)]
     call = exp.shift
 
     if Array === call.last then # HACK - I _really_ need rewrites to happen first
@@ -486,6 +490,19 @@ class RubyToRuby < SexpProcessor
 
     iter.sub!(/\(\)$/, '')
 
+    # REFACTOR: ugh
+    result = []
+    result << "#{iter} {"
+    result << " |#{args}|" if args
+    if body then
+      result << " #{body.strip} "
+    else
+      result << ' '
+    end
+    result << "}"
+    result = result.join
+    return result if result !~ /\n/ and result.size < 60
+
     result = []
     result << "#{iter} #{b}"
     result << " |#{args}|" if args
@@ -523,13 +540,29 @@ class RubyToRuby < SexpProcessor
     exp.shift.to_s
   end
 
+  def splat(sym)
+    :"*#{sym}"
+  end
+
   def process_masgn(exp)
     lhs = exp.shift
-    rhs = exp.shift rescue nil
+    rhs = exp.empty? ? nil : exp.shift
 
-    assert_type lhs, :array
-    lhs.shift
-    lhs = lhs.map { |l| process(l) }
+    unless exp.empty? then
+      rhs[-1] = splat(rhs[-1])
+      lhs << rhs
+      rhs = exp.shift
+    end
+
+    case lhs.first
+    when :array then
+      lhs.shift
+      lhs = lhs.map { |l| process(l) }
+    when :dasgn_curr then
+      lhs = [ splat(lhs.last) ]
+    else
+      raise "no clue: #{lhs.inspect}"
+    end
 
     unless rhs.nil? then
       # HACK - but seems to work (see to_ary test)      assert_type rhs, :array
@@ -869,12 +902,12 @@ class RubyToRuby < SexpProcessor
         body.block.delete_at(1) # nuke the decl # REFACTOR
         masgn = body.masgn(true)
         if masgn then
-          splat = :"*#{masgn[-1][-1]}"
+          splat = self.splat(masgn[-1][-1])
           args.push(splat)
         else
           dasgn_curr = body.dasgn_curr(true)
           if dasgn_curr then
-            arg = :"*#{dasgn_curr[-1]}"
+            arg = self.splat(dasgn_curr[-1])
             args.push(arg)
           end
         end
@@ -898,7 +931,7 @@ class RubyToRuby < SexpProcessor
         dasgn = body.masgn(true)
         # DAMNIT body.block.dasgn_curr(true) - multiple values so can't use
         body.block.delete_at(1) # nuke the decl
-        splat = :"*#{dasgn[-1][-1]}"
+        splat = self.splat(dasgn[-1][-1])
         args.push(splat)
         body.find_and_replace_all(:dvar, :lvar)
       end
