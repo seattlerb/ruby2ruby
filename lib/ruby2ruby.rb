@@ -119,9 +119,9 @@ class RubyToRuby < SexpProcessor
 
     case name
     when :[]= then
-      lhs = process args.delete_at(1)
+      rhs = process args.pop
       args[0] = :arglist
-      "#{receiver}[#{lhs}] = #{process(args)}"
+      "#{receiver}[#{process(args)}] = #{rhs}"
     else
       if args then
         "#{receiver}.#{name.to_s[0..-2]} = #{process(args)[1..-2]}"
@@ -208,6 +208,10 @@ class RubyToRuby < SexpProcessor
       "(#{receiver} #{name} #{args})"
     when :[] then
       "#{receiver}[#{args}]"
+    when :"-@" then
+      "-#{receiver}"
+    when :"+@" then
+      "+#{receiver}"
     else
       unless receiver.nil? then
         "#{receiver}.#{name}#{args ? "(#{args})" : args}"
