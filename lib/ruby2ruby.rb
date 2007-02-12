@@ -12,6 +12,7 @@ end
 
 class RubyToRuby < SexpProcessor
   VERSION = '1.1.5'
+  LINE_LENGTH = 78
 
   def self.translate(klass_or_str, method = nil)
     self.new.process(ParseTree.translate(klass_or_str, method))
@@ -468,7 +469,7 @@ class RubyToRuby < SexpProcessor
     if t then
       unless f then
         r = "#{t} if #{c}"
-        return r if (@indent+r).size < 78 and r !~ /\n/
+        return r if (@indent+r).size < LINE_LENGTH and r !~ /\n/
       end
       r = "if #{c} then\n#{indent(t)}\n"
       r << "else\n#{indent(f)}\n" if f
@@ -476,7 +477,7 @@ class RubyToRuby < SexpProcessor
       r
     else
       r = "#{f} unless #{c}"
-      return r if (@indent+r).size < 78 and r !~ /\n/
+      return r if (@indent+r).size < LINE_LENGTH and r !~ /\n/
       "unless #{c} then\n#{indent(f)}\nend"
     end
   end
@@ -505,7 +506,7 @@ class RubyToRuby < SexpProcessor
     end
     result << "}"
     result = result.join
-    return result if result !~ /\n/ and result.size < 60
+    return result if result !~ /\n/ and result.size < LINE_LENGTH
 
     result = []
     result << "#{iter} #{b}"
@@ -670,15 +671,14 @@ class RubyToRuby < SexpProcessor
       list = sexp.shift
       body = sexp.shift
 
-      var = if list.last.first == :lasgn then
+      var = if list and list.last.first == :lasgn then
               list.pop[1]
             else
               nil
             end
 
-      list[0] = :arglist
-
       if list then
+        list[0] = :arglist
         code << "rescue #{process(list)}"
       else
         code << "rescue"
@@ -702,6 +702,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_rescue(exp)
+    # TODO: rewrite this
     # TODO: proper formatting depends on knowing the context
     #
     # a = b rescue c            =>                [lasgn a [rescue b c]]
@@ -721,9 +722,14 @@ class RubyToRuby < SexpProcessor
         code << "else"
         code << indent(els)
       else
-        code << "end\n" unless stack.first == "process_block"
+        unless stack.first == "process_block" then
+          code << "end\n"
+        else
+          r = [body, resbody.gsub(/rescue\n\s+/, 'rescue ')].join(' ')
+          code = [r] if (@indent+r).size < LINE_LENGTH and r !~ /\n/
+        end
       end
-      code.join("\n")
+      code.join("\n").chomp
     else # a rescue b and others
       body = process exp.shift
       assert_type exp.first, :resbody
@@ -890,7 +896,7 @@ class RubyToRuby < SexpProcessor
       assert_type body, :scope
       assert_type body[1], :block
     when :scope, :fbody then
-      body = body[1] if body.first == :fbody
+      body = body.pop if body.first == :fbody
       case body.first
       when :scope then
         args = body.block.args(true)
