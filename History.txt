@@ -1,3 +1,18 @@
+== 1.1.5 / 2007-02-13
+
+* 3 minor enhancements:
+	* Can now heckle ActiveRecord::Base in full.
+	* Cleaned up 1-liner generating code.
+	* Made clean/simple rescues 1-liners.
+* 7 bug fixes:
+	* Finally got the rest of block_pass working.
+	* Fixed block_pass on procs in iters. UGH!
+	* Fixed attrasgn in masgn.
+	* Fixed splat in masgn.
+	* Fixed unary/prefix methods.
+	* Fixed attrasgn for []= where there were multiple args inside [].
+	* Fixed a couple resbody bugs.
+
 == 1.1.4 / 2007-01-15
 
 * 4 minor enhancements:
