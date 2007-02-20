@@ -10,6 +10,53 @@ class TestRubyToRuby < Test::Unit::TestCase
     @processor = RubyToRuby.new
   end
 
+  def test_lit_regexp_slash
+    inn = s(:lit, /blah\/blah/)
+    out = '/blah\/blah/'
+
+    assert_equal out, @processor.process(inn)
+
+    r = eval(out)
+    assert_equal(/blah\/blah/, r)
+  end
+
+  def util_thingy(type)
+    s(type,
+      "blah",
+      s(:call, s(:lit, 1), :+, s(:array, s(:lit, 1))),
+      s(:str, 'blah"blah/blah'))
+  end
+
+  def test_dregx_slash
+    inn = util_thingy(:dregx)
+    out = '/blah#{(1 + 1)}blah"blah\/blah/'
+
+    assert_equal out, @processor.process(inn)
+
+    r = eval(out)
+    assert_equal(/blah2blah"blah\/blah/, r)
+  end
+
+  def test_dstr_quote
+    inn = util_thingy(:dstr)
+    out = '"blah#{(1 + 1)}blah\"blah/blah"'
+
+    assert_equal out, @processor.process(inn)
+
+    r = eval(out)
+    assert_equal "blah2blah\"blah/blah", r
+  end
+
+  def test_dsym_quote
+    inn = util_thingy(:dsym)
+    out = ':"blah#{(1 + 1)}blah\"blah/blah"'
+
+    assert_equal out, @processor.process(inn)
+
+    r = eval(out)
+    assert_equal :"blah2blah\"blah/blah", r
+  end
+
   def test_rewrite_defn_define_method
     inn = s(:defn, :splatted,
             s(:bmethod,
@@ -103,6 +150,8 @@ rescue SyntaxError => e
   puts ruby
   exit 1
 end
+
+RubyToRuby2::LINE_LENGTH = RubyToRuby::LINE_LENGTH # HACK
 
 class TestRubyToRuby2 < TestRubyToRuby
   def setup

@@ -11,7 +11,7 @@ class NilClass # Objective-C trick
 end
 
 class RubyToRuby < SexpProcessor
-  VERSION = '1.1.5'
+  VERSION = '1.1.6'
   LINE_LENGTH = 78
 
   def self.translate(klass_or_str, method = nil)
@@ -362,8 +362,27 @@ class RubyToRuby < SexpProcessor
     "(#{process exp.shift}...#{process exp.shift})"
   end
 
+  def util_dthing(exp, dump=false)
+    s = []
+    s << exp.shift.dump[1..-2]
+    until exp.empty?
+      pt = exp.shift
+      s << case pt.first
+           when :str then
+             if dump then
+               pt.last.dump[1..-2]
+             else
+               pt.last.gsub(%r%/%, '\/')
+             end
+           else
+             "#\{#{process(pt)}}"
+           end
+    end
+    s
+  end
+
   def process_dregx(exp)
-    "/#{process_dstr(exp)[1..-2]}/"
+    "/#{util_dthing(exp).join}/"
   end
 
   def process_dregx_once(exp)
@@ -371,16 +390,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_dstr(exp)
-    s = exp.shift.dump[0..-2]
-    until exp.empty?
-      pt = exp.shift
-      if pt.first == :str
-        s << process(pt)[1..-2]
-      else
-        s << '#{' + process(pt) + '}'
-      end
-    end
-    s + '"'
+    "\"#{util_dthing(exp, true).join}\""
   end
 
   def process_dsym(exp)
@@ -534,8 +544,9 @@ class RubyToRuby < SexpProcessor
 
   def process_lit(exp)
     obj = exp.shift
-    if obj.is_a? Range # to get around how parsed ranges turn into lits and lose parens
-      "(" + obj.inspect + ")"
+    case obj
+    when Range then
+      "(#{obj.inspect})"
     else
       obj.inspect
     end
