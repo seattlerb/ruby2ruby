@@ -90,12 +90,16 @@ class RubyToRuby < SexpProcessor
 
   def process_argscat(exp)
     args = []
+
     ary = exp.shift
     ary.shift # :array
     until ary.empty? do
       args << process(ary.shift)
     end
+
     args << "*#{process(exp.shift)}"
+    args << process(exp.shift) unless exp.empty? # optional block arg
+
     args.join ', '
   end
 
@@ -169,7 +173,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_block_pass(exp)
-    bname = [:block_arg, process(exp.shift)]
+    bname = s(:block_arg, process(exp.shift)) # FIX
     call = exp.shift
 
     if Array === call.last then # HACK - I _really_ need rewrites to happen first
@@ -179,6 +183,7 @@ class RubyToRuby < SexpProcessor
       when :array then
         # do nothing
       else
+        has_args = Array === call.last and call.last.first == :array
         call << [:array] unless has_args
       end
       call.last << bname
@@ -920,7 +925,6 @@ class RubyToRuby < SexpProcessor
         end
       when :bmethod then
         body[0] = :scope
-        body.block.delete_at(1) # nuke the decl # REFACTOR
         masgn = body.masgn(true)
         if masgn then
           splat = self.splat(masgn[-1][-1])
@@ -950,8 +954,6 @@ class RubyToRuby < SexpProcessor
         body.find_and_replace_all(:dvar, :lvar)
       when :masgn then
         dasgn = body.masgn(true)
-        # DAMNIT body.block.dasgn_curr(true) - multiple values so can't use
-        body.block.delete_at(1) # nuke the decl
         splat = self.splat(dasgn[-1][-1])
         args.push(splat)
         body.find_and_replace_all(:dvar, :lvar)

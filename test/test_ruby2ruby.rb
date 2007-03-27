@@ -62,7 +62,6 @@ class TestRubyToRuby < Test::Unit::TestCase
             s(:bmethod,
               s(:masgn, s(:dasgn_curr, :args)),
               s(:block,
-                s(:dasgn_curr, :y),
                 s(:dasgn_curr, :y, s(:call, s(:dvar, :args), :first)),
                 s(:call, s(:dvar, :y), :+, s(:array, s(:lit, 42))))))
     out = s(:defn, :splatted,
@@ -81,7 +80,6 @@ class TestRubyToRuby < Test::Unit::TestCase
               s(:bmethod,
                 s(:masgn, s(:dasgn_curr, :params)),
                 s(:block,
-                  s(:dasgn_curr, :force_reload, s(:dasgn_curr, :association, s(:dasgn_curr, :retval))),
                   s(:lit, 42)))))
     out = s(:defn, :group,
             s(:args, :"*params"),
