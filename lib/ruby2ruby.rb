@@ -738,7 +738,8 @@ class RubyToRuby < SexpProcessor
         code << "else"
         code << indent(els)
       else
-        unless stack.first == "process_block" then
+        unless stack.first == "process_block" ||
+               stack.first == "process_ensure" then
           code << "end\n"
         else
           r = [body, resbody.gsub(/rescue\n\s+/, 'rescue ')].join(' ')

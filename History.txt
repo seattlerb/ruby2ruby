@@ -1,3 +1,8 @@
+== 1.1.6
+
+* N bug fixes:
+	* Fixed a bug with begin/rescue/ensure.
+
 == 1.1.5 / 2007-02-13
 
 * 3 minor enhancements:
