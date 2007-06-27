@@ -165,7 +165,18 @@ class RubyToRuby < SexpProcessor
       end
     end
 
-    return result.join("\n") + "\n"
+    result = result.join "\n"
+
+    result = case processor_stack.first
+             when nil, 'process_if', 'process_iter', 'process_resbody',
+                  'process_scope',
+                  'process_when', 'process_while' then
+               result + "\n"
+             else
+               "(#{result})"
+             end
+
+    return result
   end
 
   def process_block_arg(exp)
@@ -723,7 +734,7 @@ class RubyToRuby < SexpProcessor
     #
     # a = b rescue c            =>                [lasgn a [rescue b c]]
     # begin; a = b; rescue c    => [begin [rescue [lasgn a b] c]]
-    stack = caller.map { |s| s[/process_\w+/] }.compact
+    stack = processor_stack
 
     case stack.first
     when "process_begin", "process_ensure", "process_block" then
@@ -858,6 +869,10 @@ class RubyToRuby < SexpProcessor
 
   def process_zsuper(exp)
     "super"
+  end
+
+  def processor_stack
+    caller.map { |s| s[/process_\w+/] }.compact[1..-1]
   end
 
   def cond_loop(exp, name)
