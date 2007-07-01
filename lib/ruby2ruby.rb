@@ -598,8 +598,11 @@ class RubyToRuby < SexpProcessor
 
     unless rhs.nil? then
       # HACK - but seems to work (see to_ary test)      assert_type rhs, :array
-      rhs.shift
-      rhs = rhs.map { |r| process(r) }
+      rhs = if rhs.shift == :argscat then
+              [process_argscat(rhs)]
+            else
+              rhs.map { |r| process(r) }
+            end
       return "#{lhs.join(", ")} = #{rhs.join(", ")}"
     else
       return lhs.join(", ")
