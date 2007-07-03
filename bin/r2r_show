@@ -1,0 +1,44 @@
+#!/usr/local/bin/ruby -ws
+
+begin require 'rubygems' rescue LoadError end
+require 'ruby2ruby'
+
+def discover_new_classes_from
+  old_classes = []
+  ObjectSpace.each_object(Module) do |klass|
+    old_classes << klass
+  end
+
+  yield
+
+  new_classes = []
+  ObjectSpace.each_object(Module) do |klass|
+    new_classes << klass
+  end
+
+  new_classes -= old_classes
+  new_classes = [ eval($c) ] if defined? $c
+  new_classes
+end
+
+$f = true unless defined? $f
+
+new_classes = discover_new_classes_from do
+  ARGV.unshift "-" if ARGV.empty?
+  ARGV.each do |name|
+    if name == "-" then
+      code = $stdin.read
+      code = "class Example; def example; #{code}; end; end" if $f
+      eval code unless code.nil?
+    else
+      require name
+    end
+  end
+end
+
+result = ParseTree.new.parse_tree(*new_classes)
+
+result = result[0][3][2][1][2..-1] if $f
+
+puts RubyToRuby.new.process(result.first)
+
