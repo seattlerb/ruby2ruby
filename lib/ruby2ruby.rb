@@ -318,7 +318,7 @@ class RubyToRuby < SexpProcessor
 
   def process_dasgn_curr(exp)
     lhs = exp.shift.to_s
-    rhs = exp.shift
+    rhs = exp.shift rescue nil
     return lhs if rhs.nil?
     return "#{lhs} = #{process rhs}" unless rhs.first == :dasgn_curr
 
@@ -752,8 +752,8 @@ class RubyToRuby < SexpProcessor
         code << indent("# do nothing")
       end
 
-      sexp = exp.shift
-      if sexp then
+      unless exp.empty? then
+        sexp = exp.shift
         assert_type sexp, :resbody
         sexp.shift
       end
@@ -774,7 +774,7 @@ class RubyToRuby < SexpProcessor
     when "process_begin", "process_ensure", "process_block" then
       body = process exp.shift
       resbody = process exp.shift
-      els = process exp.shift
+      els = process exp.shift rescue nil
 
       code = []
       code << indent(body)

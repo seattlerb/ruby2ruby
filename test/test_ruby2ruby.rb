@@ -1,5 +1,7 @@
 #!/usr/local/bin/ruby -w
 
+$TESTING = true
+
 require 'test/unit'
 begin require 'rubygems'; rescue LoadError; end
 require 'ruby2ruby'
