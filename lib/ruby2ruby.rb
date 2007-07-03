@@ -14,6 +14,21 @@ class RubyToRuby < SexpProcessor
   VERSION = '1.1.6'
   LINE_LENGTH = 78
 
+  ##
+  # Nodes that represent assignment and probably need () around them.
+
+  ASSIGN_NODES = [
+    :dasgn,
+    :flip2,
+    :flip3,
+    :lasgn,
+    :masgn,
+    :op_asgn1,
+    :op_asgn2,
+    :op_asgn_and,
+    :op_asgn_or,
+  ]
+
   def self.translate(klass_or_str, method = nil)
     self.new.process(ParseTree.translate(klass_or_str, method))
   end
@@ -211,7 +226,12 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_call(exp)
+    receiver_node_type = exp.first.first
     receiver = process exp.shift
+
+    receiver = "(#{receiver})" if
+      RubyToRuby::ASSIGN_NODES.include? receiver_node_type
+
     name = exp.shift
     args_exp = exp.shift rescue nil
     if args_exp && args_exp.first == :array
@@ -488,12 +508,15 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_if(exp)
+    expand = RubyToRuby::ASSIGN_NODES.include? exp.first.first
     c = process exp.shift
     t = process exp.shift
     f = process exp.shift
 
+    c = "(#{c.chomp})" if c =~ /\n/
+
     if t then
-      unless f then
+      unless f or expand then
         r = "#{t} if #{c}"
         return r if (@indent+r).size < LINE_LENGTH and r !~ /\n/
       end
@@ -503,7 +526,8 @@ class RubyToRuby < SexpProcessor
       r
     else
       r = "#{f} unless #{c}"
-      return r if (@indent+r).size < LINE_LENGTH and r !~ /\n/
+      # HACK needs test
+      return r if not expand and (@indent+r).size < LINE_LENGTH and r !~ /\n/
       "unless #{c} then\n#{indent(f)}\nend"
     end
   end
@@ -589,7 +613,14 @@ class RubyToRuby < SexpProcessor
     case lhs.first
     when :array then
       lhs.shift
-      lhs = lhs.map { |l| process(l) }
+      lhs = lhs.map do |l|
+        case l.first
+        when :masgn then
+          "(#{process(l)})"
+        else
+          process(l)
+        end
+      end
     when :dasgn_curr then
       lhs = [ splat(lhs.last) ]
     else
@@ -770,7 +801,13 @@ class RubyToRuby < SexpProcessor
       resbody = resbody.shift # actual code
 
       resbody = process resbody
-      "#{body} rescue #{resbody}"
+      code = "#{body} rescue #{resbody}"
+      case stack.first
+      when "process_hash" then # HACK move to process_hash
+        "(#{code})"
+      else
+        code
+      end
     end
   end
 
