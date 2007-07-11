@@ -3,6 +3,7 @@
 begin require 'rubygems'; rescue LoadError; end
 require 'parse_tree'
 require 'sexp_processor'
+require 'unified_ruby'
 
 class NilClass # Objective-C trick
   def method_missing(msg, *args, &block)
@@ -11,6 +12,8 @@ class NilClass # Objective-C trick
 end
 
 class RubyToRuby < SexpProcessor
+  include UnifiedRuby
+
   VERSION = '1.1.6'
   LINE_LENGTH = 78
 
@@ -39,6 +42,13 @@ class RubyToRuby < SexpProcessor
     self.auto_shift_type = true
     self.strict = true
     self.expected = String
+
+    # self.debug[:defn] = /fbody/
+  end
+
+  def process exp
+    exp = Sexp.from_array(exp) if Array === exp unless Sexp === exp
+    super exp
   end
 
   ############################################################
@@ -135,7 +145,7 @@ class RubyToRuby < SexpProcessor
   def process_attrasgn(exp)
     receiver = process exp.shift
     name = exp.shift
-    args = exp.shift
+    args = exp.empty? ? nil : exp.shift
 
     case name
     when :[]= then
@@ -221,7 +231,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_break(exp)
-    val = process(exp.shift)
+    val = exp.empty? ? nil : process(exp.shift)
     "break" + (val ? " #{val}" : "")
   end
 
@@ -234,10 +244,11 @@ class RubyToRuby < SexpProcessor
 
     name = exp.shift
     args_exp = exp.shift rescue nil
-    if args_exp && args_exp.first == :array
+    if args_exp && args_exp.first == :array # FIX
       args = "#{process(args_exp)[1..-2]}"
     else
       args = process args_exp
+      args = nil if args.empty?
     end
 
     case name
@@ -340,16 +351,19 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_defs(exp)
+    receiver = process(exp.shift)
+    name = exp.shift
+    exp.unshift "#{receiver}.#{name}"
     process_defn(exp)
   end
 
   def process_defn(exp)
-    t = exp[1].first
-    t2 = exp[2].first rescue nil
+    type1 = exp[1].first
+    type2 = exp[2].first rescue nil
 
-    if t == :args and [:ivar, :attrset].include? t2 then
+    if type1 == :args and [:ivar, :attrset].include? type2 then
       name = exp.shift
-      case t2
+      case type2
       when :ivar then
         exp.clear
         return "attr_reader #{name.inspect}"
@@ -361,7 +375,7 @@ class RubyToRuby < SexpProcessor
       end
     end
 
-    case t
+    case type1
     when :cfunc then
       s = "# method '#{exp.shift}' defined in a C function"
       exp.shift
@@ -451,8 +465,9 @@ class RubyToRuby < SexpProcessor
     "false"
   end
 
+  # TODO: remove for unified
   def process_fcall(exp)
-    exp_orig = exp.deep_clone
+    recv = exp.shift unless Symbol === exp.first # HACK conditional - some not getting rewritten?
     name = exp.shift.to_s
     args = exp.shift
     code = []
@@ -460,7 +475,7 @@ class RubyToRuby < SexpProcessor
       args[0] = :arglist if args.first == :array
       code << process(args)
     end
-    return "#{name}(#{code.join(', ')})"
+    return code.empty? ? name : "#{name}(#{code.join(', ')})"
   end
 
   def process_flip2(exp)
@@ -535,7 +550,7 @@ class RubyToRuby < SexpProcessor
   def process_iter(exp)
     iter = process exp.shift
     args = process exp.shift
-    body = process exp.shift
+    body = exp.empty? ? nil : process(exp.shift)
 
     b, e = if iter == "END" then
              [ "{", "}" ]
@@ -729,8 +744,8 @@ class RubyToRuby < SexpProcessor
 
     sexp = exp
     until exp.empty? and (sexp.nil? or sexp.empty?)
-      list = sexp.shift
-      body = sexp.shift
+      list = sexp.shift rescue nil
+      body = sexp.shift rescue nil
 
       var = if list and list.last.first == :lasgn then
               list.pop[1]
@@ -771,9 +786,9 @@ class RubyToRuby < SexpProcessor
     stack = processor_stack
 
     case stack.first
-    when "process_begin", "process_ensure", "process_block" then
+    when "process_begin", "process_ensure", "process_block" then # FIX: ugh!
       body = process exp.shift
-      resbody = process exp.shift
+      resbody = process exp.shift rescue nil
       els = process exp.shift rescue nil
 
       code = []
@@ -824,7 +839,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_scope(exp)
-    return process(exp.shift) || ""
+    exp.empty? ? "" : process(exp.shift)
   end
 
   def process_self(exp)
@@ -870,7 +885,10 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_vcall(exp)
-    return exp.shift.to_s
+    recv = exp.shift # nil
+    name = exp.shift
+    args = exp.shift # nil
+    return name.to_s
   end
 
   def process_when(exp)
@@ -894,7 +912,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_yield(exp)
-    args = exp.shift
+    args = exp.empty? ? nil : exp.shift
     if args then
       args[0] = :arglist if args.first == :array
       args = process(args)
@@ -942,9 +960,10 @@ class RubyToRuby < SexpProcessor
   # defn: [:defn, :name, [:args...], [:scope, [:block, ...]]]
 
   def rewrite_defs(exp)
-    target = exp.delete_at 1
-    exp[1] = :"#{target}.#{exp[1]}"
-    rewrite_defn(exp)
+    receiver = exp.shift
+    result = rewrite_defn(exp)
+    result.unshift receiver
+    result
   end
 
   # s(:defn, :name, s(:scope, s(:block, s(:args, ...), ...)))
@@ -953,97 +972,97 @@ class RubyToRuby < SexpProcessor
   # =>
   # s(:defn, :name, s(:args, ...), s(:scope, s:(block, ...)))
 
-  def rewrite_defn(exp)
-    # REFACTOR this needs help now
-    exp.shift # :defn
-    name = exp.shift
-    args = s(:args)
-    body = Sexp.from_array exp.shift
+#   def rewrite_defn(exp)
+#     # REFACTOR this needs help now
+#     exp.shift # :defn
+#     name = exp.shift
+#     args = s(:args)
+#     body = Sexp.from_array exp.shift
 
-    case body.first
-    when :args then # already normalized
-      args = body
-      body = exp.shift
-      assert_type args, :args
-      assert_type body, :scope
-      assert_type body[1], :block
-    when :scope, :fbody then
-      body = body.pop if body.first == :fbody
-      case body.first
-      when :scope then
-        args = body.block.args(true)
-        assert_type body, :scope
-        assert_type body[1], :block
+#     case body.first
+#     when :args then # already normalized
+#       args = body
+#       body = exp.shift
+#       assert_type args, :args
+#       assert_type body, :scope
+#       assert_type body[1], :block
+#     when :scope, :fbody then
+#       body = body.pop if body.first == :fbody
+#       case body.first
+#       when :scope then
+#         args = body.block.args(true)
+#         assert_type body, :scope
+#         assert_type body[1], :block
 
-        if body[1][1].first == :block_arg then
-          block_arg = body[1].delete_at 1
-          args << block_arg
-        end
-      when :bmethod then
-        body[0] = :scope
-        masgn = body.masgn(true)
-        if masgn then
-          splat = self.splat(masgn[-1][-1])
-          args.push(splat)
-        else
-          dasgn_curr = body.dasgn_curr(true)
-          if dasgn_curr then
-            arg = self.splat(dasgn_curr[-1])
-            args.push(arg)
-          end
-        end
-        body.find_and_replace_all(:dvar, :lvar)
-      else
-        raise "no: #{body.first} / #{body.inspect}"
-      end
-    when :bmethod then
-      body.shift # :bmethod
-      case body.first.first
-      when :dasgn_curr then
-        # WARN: there are some implications here of having an empty
-        # :args below namely, "proc { || " does not allow extra args
-        # passed in.
-        dasgn = body.shift
-        assert_type dasgn, :dasgn_curr
-        dasgn.shift # type
-        args.push(*dasgn)
-        body.find_and_replace_all(:dvar, :lvar)
-      when :masgn then
-        dasgn = body.masgn(true)
-        splat = self.splat(dasgn[-1][-1])
-        args.push(splat)
-        body.find_and_replace_all(:dvar, :lvar)
-      end
+#         if body[1][1].first == :block_arg then
+#           block_arg = body[1].delete_at 1
+#           args << block_arg
+#         end
+#       when :bmethod then
+#         body[0] = :scope
+#         masgn = body.masgn(true)
+#         if masgn then
+#           splat = self.splat(masgn[-1][-1])
+#           args.push(splat)
+#         else
+#           dasgn_curr = body.dasgn_curr(true)
+#           if dasgn_curr then
+#             arg = self.splat(dasgn_curr[-1])
+#             args.push(arg)
+#           end
+#         end
+#         body.find_and_replace_all(:dvar, :lvar)
+#       else
+#         raise "no: #{body.first} / #{body.inspect}"
+#       end
+#     when :bmethod then
+#       body.shift # :bmethod
+#       case body.first.first
+#       when :dasgn_curr then
+#         # WARN: there are some implications here of having an empty
+#         # :args below namely, "proc { || " does not allow extra args
+#         # passed in.
+#         dasgn = body.shift
+#         assert_type dasgn, :dasgn_curr
+#         dasgn.shift # type
+#         args.push(*dasgn)
+#         body.find_and_replace_all(:dvar, :lvar)
+#       when :masgn then
+#         dasgn = body.masgn(true)
+#         splat = self.splat(dasgn[-1][-1])
+#         args.push(splat)
+#         body.find_and_replace_all(:dvar, :lvar)
+#       end
 
-      if body.first.first == :block then
-        body = s(:scope, body.shift)
-      else
-        body = s(:scope, s(:block, body.shift)) # single statement
-      end
-    when :dmethod
-      # BEFORE: [:defn, :dmethod_added, [:dmethod, :bmethod_maker, ...]]
-      # AFTER:  [:defn, :dmethod_added, ...]
-      body[0] = :scope
-      body.delete_at 1 # method name
-      args = body.scope.block.args(true)
-    when :ivar, :attrset then
-      # do nothing
-    else
-      raise "Unknown :defn format: #{name.inspect} #{args.inspect} #{body.inspect}"
-    end
+#       if body.first.first == :block then
+#         body = s(:scope, body.shift)
+#       else
+#         body = s(:scope, s(:block, body.shift)) # single statement
+#       end
+#     when :dmethod
+#       # BEFORE: [:defn, :dmethod_added, [:dmethod, :bmethod_maker, ...]]
+#       # AFTER:  [:defn, :dmethod_added, ...]
+#       body[0] = :scope
+#       body.delete_at 1 # method name
+#       args = body.scope.block.args(true)
+#     when :ivar, :attrset then
+#       # do nothing
+#     else
+#       raise "Unknown :defn format: #{name.inspect} #{args.inspect} #{body.inspect}"
+#     end
 
-    return s(:defn, name, args, body)
-  end
+#     return s(:defn, name, args, body)
+#   end
 
-  def rewrite_resbody(exp)
+  def rewrite_resbody(exp) # TODO: clean up and move to unified
     result = []
 
     code = result
     while exp and exp.first == :resbody do
       code << exp.shift
       list = exp.shift
-      body = exp.shift
-      exp  = exp.shift # either another resbody or nil
+      body = exp.shift rescue nil
+      exp  = exp.shift rescue nil
 
       # code may be nil, :lasgn, or :block
       case body.first
