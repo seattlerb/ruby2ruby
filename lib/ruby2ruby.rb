@@ -21,16 +21,17 @@ class RubyToRuby < SexpProcessor
   # Nodes that represent assignment and probably need () around them.
 
   ASSIGN_NODES = [
-    :dasgn,
-    :flip2,
-    :flip3,
-    :lasgn,
-    :masgn,
-    :op_asgn1,
-    :op_asgn2,
-    :op_asgn_and,
-    :op_asgn_or,
-  ]
+                  :dasgn,
+                  :flip2,
+                  :flip3,
+                  :lasgn,
+                  :masgn,
+                  :op_asgn1,
+                  :op_asgn2,
+                  :op_asgn_and,
+                  :op_asgn_or,
+                  :return,
+                 ]
 
   def self.translate(klass_or_str, method = nil)
     self.new.process(ParseTree.translate(klass_or_str, method))
@@ -43,7 +44,7 @@ class RubyToRuby < SexpProcessor
     self.strict = true
     self.expected = String
 
-    # self.debug[:defn] = /fbody/
+    # self.debug[:defn] = /zsuper/
   end
 
   def process exp
@@ -232,7 +233,12 @@ class RubyToRuby < SexpProcessor
 
   def process_break(exp)
     val = exp.empty? ? nil : process(exp.shift)
-    "break" + (val ? " #{val}" : "")
+    # HACK "break" + (val ? " #{val}" : "")
+    if val then
+      "break #{val}"
+    else
+      "break"
+    end
   end
 
   def process_call(exp)
@@ -393,7 +399,7 @@ class RubyToRuby < SexpProcessor
       body = process(exp.shift)
       raise "no"
     else
-      raise "Unknown defn type: #{t} for #{exp.inspect}"
+      raise "Unknown defn type: #{type1} for #{exp.inspect}"
     end
   end
 
@@ -523,26 +529,34 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_if(exp)
-    expand = RubyToRuby::ASSIGN_NODES.include? exp.first.first
-    c = process exp.shift
-    t = process exp.shift
-    f = process exp.shift
+      expand = RubyToRuby::ASSIGN_NODES.include? exp.first.first
+      c = process exp.shift
+      t = process exp.shift
+      f = process exp.shift
 
     c = "(#{c.chomp})" if c =~ /\n/
 
     if t then
-      unless f or expand then
-        r = "#{t} if #{c}"
-        return r if (@indent+r).size < LINE_LENGTH and r !~ /\n/
+      unless expand then
+        if f then
+          r = "#{c} ? (#{t}) : (#{f})"
+          r = nil if r =~ /return/ # HACK - need contextual awareness or something
+        else
+          r = "#{t} if #{c}"
+        end
+        return r if r and (@indent+r).size < LINE_LENGTH and r !~ /\n/
       end
+
       r = "if #{c} then\n#{indent(t)}\n"
       r << "else\n#{indent(f)}\n" if f
       r << "end"
+
       r
     else
-      r = "#{f} unless #{c}"
-      # HACK needs test
-      return r if not expand and (@indent+r).size < LINE_LENGTH and r !~ /\n/
+      unless expand then
+        r = "#{f} unless #{c}"
+        return r if (@indent+r).size < LINE_LENGTH and r !~ /\n/
+      end
       "unless #{c} then\n#{indent(f)}\nend"
     end
   end
@@ -831,7 +845,13 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_return(exp)
-    return "return" + (exp.empty? ? "" : " #{process exp.shift}")
+    # HACK return "return" + (exp.empty? ? "" : " #{process exp.shift}")
+
+    if exp.empty? then
+      return "return"
+    else
+      return "return #{process exp.shift}"
+    end
   end
 
   def process_sclass(exp)
@@ -865,6 +885,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_to_ary(exp)
+p exp
     process(exp.shift)
   end
 
@@ -884,12 +905,12 @@ class RubyToRuby < SexpProcessor
     "alias #{exp.shift} #{exp.shift}"
   end
 
-  def process_vcall(exp)
-    recv = exp.shift # nil
-    name = exp.shift
-    args = exp.shift # nil
-    return name.to_s
-  end
+#   def process_vcall(exp)
+#     recv = exp.shift # nil
+#     name = exp.shift
+#     args = exp.shift # nil
+#     return name.to_s
+#   end
 
   def process_when(exp)
     src = []
@@ -918,7 +939,12 @@ class RubyToRuby < SexpProcessor
       args = process(args)
     end
 
-    "yield" + (args ? "(#{args})" : "")
+    # "yield" + (args ? "(#{args})" : "")
+    if args then
+      "yield(#{args})"
+    else
+      "yield"
+    end
   end
 
   def process_zarray(exp)
@@ -929,7 +955,7 @@ class RubyToRuby < SexpProcessor
     "super"
   end
 
-  def processor_stack
+  def processor_stack # HACK: omg this sucks - build context into SexpProcessor
     caller.map { |s| s[/process_\w+/] }.compact[1..-1]
   end
 
