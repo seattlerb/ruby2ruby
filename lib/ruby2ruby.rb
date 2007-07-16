@@ -52,7 +52,7 @@ class RubyToRuby < SexpProcessor
   end
 
   ############################################################
-  # Processors (rewriters at bottom)
+  # Processors
 
   def process_alias(exp)
     "alias_method #{process(exp.shift)}, #{process(exp.shift)}"
@@ -956,136 +956,10 @@ class RubyToRuby < SexpProcessor
   ############################################################
   # Rewriters
 
-  ##
-  # defn: [:defn, :name, [:args...], [:scope, [:block, ...]]]
-
   def rewrite_defs(exp)
     receiver = exp.shift
     result = rewrite_defn(exp)
     result.unshift receiver
-    result
-  end
-
-  # s(:defn, :name, s(:scope, s(:block, s(:args, ...), ...)))
-  # s(:defn, :name, s(:bmethod, s(:masgn, s(:dasgn_curr, :args)), s(:block, ...)))
-  # s(:defn, :name, s(:fbody, s(:bmethod, s(:masgn, s(:dasgn_curr, :params)), s(:block, ...))))
-  # =>
-  # s(:defn, :name, s(:args, ...), s(:scope, s:(block, ...)))
-
-#   def rewrite_defn(exp)
-#     # REFACTOR this needs help now
-#     exp.shift # :defn
-#     name = exp.shift
-#     args = s(:args)
-#     body = Sexp.from_array exp.shift
-
-#     case body.first
-#     when :args then # already normalized
-#       args = body
-#       body = exp.shift
-#       assert_type args, :args
-#       assert_type body, :scope
-#       assert_type body[1], :block
-#     when :scope, :fbody then
-#       body = body.pop if body.first == :fbody
-#       case body.first
-#       when :scope then
-#         args = body.block.args(true)
-#         assert_type body, :scope
-#         assert_type body[1], :block
-
-#         if body[1][1].first == :block_arg then
-#           block_arg = body[1].delete_at 1
-#           args << block_arg
-#         end
-#       when :bmethod then
-#         body[0] = :scope
-#         masgn = body.masgn(true)
-#         if masgn then
-#           splat = self.splat(masgn[-1][-1])
-#           args.push(splat)
-#         else
-#           dasgn_curr = body.dasgn_curr(true)
-#           if dasgn_curr then
-#             arg = self.splat(dasgn_curr[-1])
-#             args.push(arg)
-#           end
-#         end
-#         body.find_and_replace_all(:dvar, :lvar)
-#       else
-#         raise "no: #{body.first} / #{body.inspect}"
-#       end
-#     when :bmethod then
-#       body.shift # :bmethod
-#       case body.first.first
-#       when :dasgn_curr then
-#         # WARN: there are some implications here of having an empty
-#         # :args below namely, "proc { || " does not allow extra args
-#         # passed in.
-#         dasgn = body.shift
-#         assert_type dasgn, :dasgn_curr
-#         dasgn.shift # type
-#         args.push(*dasgn)
-#         body.find_and_replace_all(:dvar, :lvar)
-#       when :masgn then
-#         dasgn = body.masgn(true)
-#         splat = self.splat(dasgn[-1][-1])
-#         args.push(splat)
-#         body.find_and_replace_all(:dvar, :lvar)
-#       end
-
-#       if body.first.first == :block then
-#         body = s(:scope, body.shift)
-#       else
-#         body = s(:scope, s(:block, body.shift)) # single statement
-#       end
-#     when :dmethod
-#       # BEFORE: [:defn, :dmethod_added, [:dmethod, :bmethod_maker, ...]]
-#       # AFTER:  [:defn, :dmethod_added, ...]
-#       body[0] = :scope
-#       body.delete_at 1 # method name
-#       args = body.scope.block.args(true)
-#     when :ivar, :attrset then
-#       # do nothing
-#     else
-#       raise "Unknown :defn format: #{name.inspect} #{args.inspect} #{body.inspect}"
-#     end
-
-#     return s(:defn, name, args, body)
-#   end
-
-  def rewrite_resbody(exp) # TODO: clean up and move to unified
-    result = []
-
-    code = result
-    while exp and exp.first == :resbody do
-      code << exp.shift
-      list = exp.shift
-      body = exp.shift rescue nil
-      exp  = exp.shift rescue nil
-
-      # code may be nil, :lasgn, or :block
-      case body.first
-      when nil then
-        # do nothing
-      when :lasgn then
-        # TODO: check that it is assigning $!
-        list << body
-        body = nil
-      when :block then
-        # TODO: check that it is assigning $!
-        list << body.delete_at(1) if body[1].first == :lasgn
-      else
-        # do nothing (expression form)
-      end
-
-      code << list << body
-      if exp then
-        code = []
-        result << code
-      end
-    end
-
     result
   end
 
