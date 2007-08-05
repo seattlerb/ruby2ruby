@@ -758,21 +758,22 @@ class RubyToRuby < SexpProcessor
 
     sexp = exp
     until exp.empty? and (sexp.nil? or sexp.empty?)
-      list = sexp.shift rescue nil
-      body = sexp.shift rescue nil
+      list = sexp.shift
+      body = sexp.shift
 
-      var = if list and list.last.first == :lasgn then
+      var = if list and list.size > 1 and list.last.first == :lasgn then
               list.pop[1]
             else
               nil
             end
 
-      if list then
+      if list and list.size > 1 then
         list[0] = :arglist
         code << "rescue #{process(list)}"
       else
         code << "rescue"
       end
+
       code.last << " => #{var}" if var
 
       if body then
@@ -797,13 +798,14 @@ class RubyToRuby < SexpProcessor
     #
     # a = b rescue c            =>                [lasgn a [rescue b c]]
     # begin; a = b; rescue c    => [begin [rescue [lasgn a b] c]]
-    stack = processor_stack
+
+    stack = processor_stack # HACK this shouldn't exist
 
     case stack.first
     when "process_begin", "process_ensure", "process_block" then # FIX: ugh!
       body = process exp.shift
-      resbody = process exp.shift rescue nil
-      els = process exp.shift rescue nil
+      resbody = exp.empty? ? nil : process(exp.shift)
+      els = exp.empty? ? nil : process(exp.shift)
 
       code = []
       code << indent(body)
@@ -812,8 +814,7 @@ class RubyToRuby < SexpProcessor
         code << "else"
         code << indent(els)
       else
-        unless stack.first == "process_block" ||
-               stack.first == "process_ensure" then
+        unless %w(process_block process_ensure).include? stack.first then
           code << "end\n"
         else
           r = [body, resbody.gsub(/rescue\n\s+/, 'rescue ')].join(' ')

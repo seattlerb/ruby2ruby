@@ -14,6 +14,11 @@ class TestRubyToRuby < Test::Unit::TestCase
     @processor = RubyToRuby.new
   end
 
+  def test_proc_to_ruby
+    block = proc { puts "something" }
+    assert_equal %Q|proc {\n  puts("something")\n}|, block.to_ruby
+  end
+
   def test_lit_regexp_slash
     inn = s(:lit, /blah\/blah/)
     out = '/blah\/blah/'
