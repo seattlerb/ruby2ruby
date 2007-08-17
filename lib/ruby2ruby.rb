@@ -193,10 +193,8 @@ class RubyToRuby < SexpProcessor
 
     result = result.join "\n"
 
-    result = case processor_stack.first
-             when nil, 'process_if', 'process_iter', 'process_resbody',
-                  'process_scope',
-                  'process_when', 'process_while' then
+    result = case self.context[1]
+             when nil, :scope, :if, :iter, :resbody, :when, :while then
                result + "\n"
              else
                "(#{result})"
@@ -794,15 +792,13 @@ class RubyToRuby < SexpProcessor
 
   def process_rescue(exp)
     # TODO: rewrite this
-    # TODO: proper formatting depends on knowing the context
     #
     # a = b rescue c            =>                [lasgn a [rescue b c]]
     # begin; a = b; rescue c    => [begin [rescue [lasgn a b] c]]
 
-    stack = processor_stack # HACK this shouldn't exist
-
-    case stack.first
-    when "process_begin", "process_ensure", "process_block" then # FIX: ugh!
+    current = self.context[1]
+    case current
+    when :begin, :ensure, :block then
       body = process exp.shift
       resbody = exp.empty? ? nil : process(exp.shift)
       els = exp.empty? ? nil : process(exp.shift)
@@ -814,7 +810,7 @@ class RubyToRuby < SexpProcessor
         code << "else"
         code << indent(els)
       else
-        unless %w(process_block process_ensure).include? stack.first then
+        unless [:block, :ensure].include? current then
           code << "end\n"
         else
           r = [body, resbody.gsub(/rescue\n\s+/, 'rescue ')].join(' ')
@@ -832,8 +828,8 @@ class RubyToRuby < SexpProcessor
 
       resbody = process resbody
       code = "#{body} rescue #{resbody}"
-      case stack.first
-      when "process_hash" then # HACK move to process_hash
+      case current
+      when :hash then # HACK move to process_hash
         "(#{code})"
       else
         code
@@ -886,7 +882,6 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_to_ary(exp)
-p exp
     process(exp.shift)
   end
 
@@ -954,10 +949,6 @@ p exp
 
   def process_zsuper(exp)
     "super"
-  end
-
-  def processor_stack # HACK: omg this sucks - build context into SexpProcessor
-    caller.map { |s| s[/process_\w+/] }.compact[1..-1]
   end
 
   def cond_loop(exp, name)
