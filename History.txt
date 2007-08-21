@@ -1,3 +1,22 @@
+=== 1.1.7 / 2007-08-21
+
+* 2 major enhancements:
+  * Switched to ParseTree's UnifiedRuby... much much cleaner now!
+  * Made test_ruby2ruby MUCH more rigorous with circular testing.
+* 5 minor enhancements:
+  * Add r2r_show command like parse_tree_show.
+  * Add parens for :block nodes as appropriate. May be overzealous.
+  * Make SexpAny work with #==.
+  * Removed calls to processor_stack / caller in favor of self.context.
+  * Some style differences, eschew rescue.
+* 6 bug fixes:
+  * Fix R2R bug with masgn/argscat.
+  * Fixed a bug with new resbody unification.
+  * Fixes for changes to pt_testcase.
+  * Fixes the rest of the tests under strict sexp checking.
+  * Fixed some circular bugs, mostly by hacking them out, wrt operator precidence.
+  * Fixed trinary operator.
+
 === 1.1.6 / 2007-06-05
 
 * 2 minor enhancements:
