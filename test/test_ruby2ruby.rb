@@ -9,9 +9,9 @@ require 'pt_testcase'
 
 # TODO: rename file so autotest stops bitching
 
-class TestRubyToRuby < Test::Unit::TestCase
+class TestRuby2Ruby < Test::Unit::TestCase
   def setup
-    @processor = RubyToRuby.new
+    @processor = Ruby2Ruby.new
   end
 
   def test_proc_to_ruby
@@ -116,28 +116,28 @@ end
 # s
 # t  new    2    3
 
-# Self-Translation: 1st Generation - morph RubyToRuby using RubyToRuby
-morph_and_eval RubyToRuby, RubyToRuby, 2
-class TestRubyToRuby1 < TestRubyToRuby
+# Self-Translation: 1st Generation - morph Ruby2Ruby using Ruby2Ruby
+morph_and_eval Ruby2Ruby, Ruby2Ruby, 2
+class TestRuby2Ruby1 < TestRuby2Ruby
   def setup
-    @processor = RubyToRuby2.new
+    @processor = Ruby2Ruby2.new
   end
 end
 
-# Self-Translation: 2nd Generation - morph TestRubyToRuby using RubyToRuby
-morph_and_eval RubyToRuby, TestRubyToRuby, 2
+# Self-Translation: 2nd Generation - morph TestRuby2Ruby using Ruby2Ruby
+morph_and_eval Ruby2Ruby, TestRuby2Ruby, 2
 
-# Self-Translation: 3rd Generation - test RubyToRuby2 with TestRubyToRuby1
-class TestRubyToRuby3 < TestRubyToRuby2
+# Self-Translation: 3rd Generation - test Ruby2Ruby2 with TestRuby2Ruby1
+class TestRuby2Ruby3 < TestRuby2Ruby2
   def setup
-    @processor = RubyToRuby2.new
+    @processor = Ruby2Ruby2.new
   end
 end
 
 # Self-Translation: 4th (and final) Generation - fully circular
-morph_and_eval RubyToRuby2, RubyToRuby2, 3
-class TestRubyToRuby4 < TestRubyToRuby3
+morph_and_eval Ruby2Ruby2, Ruby2Ruby2, 3
+class TestRuby2Ruby4 < TestRuby2Ruby3
   def setup
-    @processor = RubyToRuby3.new
+    @processor = Ruby2Ruby3.new
   end
 end

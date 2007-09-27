@@ -11,7 +11,7 @@ class NilClass # Objective-C trick
   end
 end
 
-class RubyToRuby < SexpProcessor
+class Ruby2Ruby < SexpProcessor
   include UnifiedRuby
 
   VERSION = '1.1.7'
@@ -244,7 +244,7 @@ class RubyToRuby < SexpProcessor
     receiver = process exp.shift
 
     receiver = "(#{receiver})" if
-      RubyToRuby::ASSIGN_NODES.include? receiver_node_type
+      Ruby2Ruby::ASSIGN_NODES.include? receiver_node_type
 
     name = exp.shift
     args_exp = exp.shift rescue nil
@@ -527,7 +527,7 @@ class RubyToRuby < SexpProcessor
   end
 
   def process_if(exp)
-      expand = RubyToRuby::ASSIGN_NODES.include? exp.first.first
+      expand = Ruby2Ruby::ASSIGN_NODES.include? exp.first.first
       c = process exp.shift
       t = process exp.shift
       f = process exp.shift
@@ -1012,6 +1012,8 @@ class RubyToRuby < SexpProcessor
   end
 end
 
+RubyToRuby = Ruby2Ruby # For backwards compatibilty... TODO: remove 2008-03-28
+
 class Method
   def with_class_and_method_name
     if self.inspect =~ /<Method: (.*)\#(.*)>/ then
@@ -1031,7 +1033,7 @@ class Method
   end
 
   def to_ruby
-    RubyToRuby.new.process(self.to_sexp)
+    Ruby2Ruby.new.process(self.to_sexp)
   end
 end
 
