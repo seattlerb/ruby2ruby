@@ -5,16 +5,10 @@ require 'parse_tree'
 require 'sexp_processor'
 require 'unified_ruby'
 
-class NilClass # Objective-C trick
-  def method_missing(msg, *args, &block)
-    nil
-  end
-end
-
 class Ruby2Ruby < SexpProcessor
   include UnifiedRuby
 
-  VERSION = '1.1.7'
+  VERSION = '1.1.8'
   LINE_LENGTH = 78
 
   ##
@@ -84,17 +78,6 @@ class Ruby2Ruby < SexpProcessor
           end
         when :block_arg then
           args << "&#{arg.last}"
-        when :array then
-          names = arg
-          vals  = exp.shift
-          names.shift
-          vals.shift
-          v_size = vals.size
-
-          args << process(names.shift) until names.size == v_size
-          names.zip(vals) do |name, val|
-            args << "#{process name} = #{process val}"
-          end
         else
           raise "unknown arg type #{arg.first.inspect}"
         end
@@ -130,13 +113,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_argspush(exp)
-    args = []
-
-    until exp.empty? do
-      args << process(exp.shift)
-    end
-
-    "#{args.join ', '}"
+    process_arglist(exp)
   end
 
   def process_array(exp)
@@ -151,7 +128,7 @@ class Ruby2Ruby < SexpProcessor
     case name
     when :[]= then
       rhs = process args.pop
-      args[0] = :arglist
+      args[0] = :arglist if args[0] == :array
       "#{receiver}[#{process(args)}] = #{rhs}"
     else
       if args then
@@ -240,7 +217,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_call(exp)
-    receiver_node_type = exp.first.first
+    receiver_node_type = exp.first.nil? ? nil : exp.first.first
     receiver = process exp.shift
 
     receiver = "(#{receiver})" if
@@ -338,12 +315,7 @@ class Ruby2Ruby < SexpProcessor
     return "#{lhs} = #{process rhs}" unless rhs.first == :dasgn_curr
 
     # keep recursing. ensure that the leaf node assigns to _something_
-    rhs = process rhs
-    if rhs =~ /=/ then
-      "#{lhs} = #{rhs}"
-    else
-      ""
-    end
+    "#{lhs} = #{process rhs}"
   end
 
   def process_dasgn(exp)
@@ -380,32 +352,15 @@ class Ruby2Ruby < SexpProcessor
     end
 
     case type1
-    when :cfunc then
-      s = "# method '#{exp.shift}' defined in a C function"
-      exp.shift
-      return s
     when :scope, :args then
       name = exp.shift
       args = process(exp.shift)
       args = "" if args == "()"
       body = indent(process(exp.shift))
       return "def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
-    when :fcall then
-      # skip the fcall (to define_method and such) and grab the body
-      name = exp.shift
-      exp.shift # :fcall to define_method
-      body = process(exp.shift)
-      raise "no"
     else
       raise "Unknown defn type: #{type1} for #{exp.inspect}"
     end
-  end
-
-  def process_defx(exp) # custom node type - TODO why in r2r?
-    name = exp.shift
-    args = process(exp.shift)
-    body = indent(process(exp.shift))
-    return "defx #{name}#{args}\n#{body}end".gsub(/\n\s*\n+/, "\n")
   end
 
   def process_dot2(exp)
@@ -421,16 +376,16 @@ class Ruby2Ruby < SexpProcessor
     s << exp.shift.dump[1..-2]
     until exp.empty?
       pt = exp.shift
-      s << case pt.first
-           when :str then
-             if dump then
-               pt.last.dump[1..-2]
-             else
-               pt.last.gsub(%r%/%, '\/')
-             end
-           else
-             "#\{#{process(pt)}}"
-           end
+      case pt.first
+      when :str then
+        if dump then
+          s << pt.last.dump[1..-2]
+        else
+          s << pt.last.gsub(%r%/%, '\/')
+        end
+      else
+        s << "#\{#{process(pt)}}"
+      end
     end
     s
   end
@@ -522,15 +477,11 @@ class Ruby2Ruby < SexpProcessor
     end
   end
 
-  def cond_indent_process(pt)
-    (pt and pt.first == :block) ? process(pt) : indent(process(pt))
-  end
-
   def process_if(exp)
-      expand = Ruby2Ruby::ASSIGN_NODES.include? exp.first.first
-      c = process exp.shift
-      t = process exp.shift
-      f = process exp.shift
+    expand = Ruby2Ruby::ASSIGN_NODES.include? exp.first.first
+    c = process exp.shift
+    t = process exp.shift
+    f = process exp.shift
 
     c = "(#{c.chomp})" if c =~ /\n/
 
@@ -588,13 +539,9 @@ class Ruby2Ruby < SexpProcessor
     result = []
     result << "#{iter} #{b}"
     result << " |#{args}|" if args
-    if body then
-      result << "\n"
-      result << indent(body.strip)
-      result << "\n"
-    else
-      result << ' '
-    end
+    result << "\n"
+    result << indent(body.strip)
+    result << "\n"
     result << e
     result.join
   end
@@ -655,13 +602,16 @@ class Ruby2Ruby < SexpProcessor
     end
 
     unless rhs.nil? then
-      # HACK - but seems to work (see to_ary test)      assert_type rhs, :array
-      rhs = if rhs.shift == :argscat then
-              [process_argscat(rhs)]
+      t = rhs.first
+      rhs = if t == :argscat then
+              rhs.shift
+              process_argscat(rhs)
             else
-              rhs.map { |r| process(r) }
+              r = process(rhs)
+              r = r[1..-2] if t != :to_ary
+              r
             end
-      return "#{lhs.join(", ")} = #{rhs.join(", ")}"
+      return "#{lhs.join(", ")} = #{rhs}"
     else
       return lhs.join(", ")
     end
@@ -800,7 +750,7 @@ class Ruby2Ruby < SexpProcessor
     case current
     when :begin, :ensure, :block then
       body = process exp.shift
-      resbody = exp.empty? ? nil : process(exp.shift)
+      resbody = exp.empty? ? '' : process(exp.shift)
       els = exp.empty? ? nil : process(exp.shift)
 
       code = []
@@ -900,13 +850,6 @@ class Ruby2Ruby < SexpProcessor
   def process_valias(exp)
     "alias #{exp.shift} #{exp.shift}"
   end
-
-#   def process_vcall(exp)
-#     recv = exp.shift # nil
-#     name = exp.shift
-#     args = exp.shift # nil
-#     return name.to_s
-#   end
 
   def process_when(exp)
     src = []
@@ -1050,7 +993,7 @@ class UnboundMethod
     name = ProcStoreTmp.name
     ProcStoreTmp.send(:define_method, name, self)
     m = ProcStoreTmp.new.method(name)
-    result = m.to_ruby.sub(/def #{name}\(([^\)]*)\)/,
+    result = m.to_ruby.sub(/def #{name}(?:\(([^\)]*)\))?/,
                            'proc { |\1|').sub(/end\Z/, '}')
     return result
   end
