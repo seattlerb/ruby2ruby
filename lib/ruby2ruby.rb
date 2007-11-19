@@ -465,7 +465,13 @@ class Ruby2Ruby < SexpProcessor
     until exp.empty?
       result << "#{process(exp.shift)} => #{process(exp.shift)}"
     end
-    return "{ #{result.join(', ')} }"
+
+    case self.context[1]
+    when :arglist, :argscat then
+      return "#{result.join(', ')}" # HACK - this will break w/ 2 hashes as args
+    else
+      return "{ #{result.join(', ')} }"
+    end
   end
 
   def process_iasgn(exp)
