@@ -512,7 +512,8 @@ class Ruby2Ruby < SexpProcessor
 
   def process_iter(exp)
     iter = process exp.shift
-    args = process exp.shift
+    args = exp.shift
+    args = (args == 0) ? '' : process(args)
     body = exp.empty? ? nil : process(exp.shift)
 
     b, e = if iter == "END" then
