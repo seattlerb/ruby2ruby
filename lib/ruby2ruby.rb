@@ -604,8 +604,15 @@ class Ruby2Ruby < SexpProcessor
       end
     when :dasgn_curr then
       lhs = [ splat(lhs.last) ]
+    when :splat then
+      lhs = [ :"*" ]
     else
       raise "no clue: #{lhs.inspect}"
+    end
+
+    if context[1] == :iter and rhs then
+      lhs << splat(rhs.last)
+      rhs = nil
     end
 
     unless rhs.nil? then
@@ -646,7 +653,12 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_next(exp)
-    "next"
+    val = exp.empty? ? nil : process(exp.shift)
+    if val then
+      "next #{val}"
+    else
+      "next"
+    end
   end
 
   def process_nil(exp)
