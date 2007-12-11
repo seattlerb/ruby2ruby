@@ -404,6 +404,10 @@ class Ruby2Ruby < SexpProcessor
     return "#{body}\nensure\n#{indent ens}"
   end
 
+  def process_evstr(exp)
+    process exp.shift
+  end
+
   def process_false(exp)
     "false"
   end
