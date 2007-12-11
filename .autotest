@@ -1,0 +1,24 @@
+# -*- ruby -*-
+
+class Autotest
+  alias :orig_find_files :find_files
+
+  def find_files
+    f = "../../ParseTree/dev/test/pt_testcase.rb"
+    orig_find_files.merge(f => File.stat(f).mtime)
+  end
+end
+
+Autotest.add_hook :initialize do |at|
+  at.extra_files << "../../ParseTree/dev/test/pt_testcase.rb"
+  at.extra_files << "../../ParseTree/dev/lib/unified_ruby.rb"
+  at.libs << ":../../ParseTree/dev/lib:../../ParseTree/dev/test"
+
+  (1..4).each do |n|
+    at.extra_class_map["TestRuby2Ruby#{n}"] = "test/test_ruby2ruby.rb"
+  end
+
+  at.add_mapping(/unified|pt_testcase/) do |f, _|
+    at.files_matching(/^test.*rb$/)
+  end
+end

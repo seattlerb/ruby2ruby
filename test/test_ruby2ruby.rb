@@ -10,7 +10,6 @@ require 'pt_testcase'
 
 class TestRuby2Ruby < Test::Unit::TestCase
   def setup
-#    puts self.name
     @processor = Ruby2Ruby.new
   end
 
@@ -146,7 +145,7 @@ morph_and_eval Ruby2Ruby, Ruby2Ruby, 2, 1 do
   end
 end
 
-# self-Translation: 2nd Generation - morph TestRuby2Ruby using Ruby2Ruby
+# Self-Translation: 2nd Generation - morph TestRuby2Ruby using Ruby2Ruby
 morph_and_eval Ruby2Ruby, TestRuby2Ruby, 2, 2 do
   # Self-Translation: 3rd Generation - test Ruby2Ruby2 with TestRuby2Ruby1
   class TestRuby2Ruby3 < TestRuby2Ruby2

@@ -842,7 +842,7 @@ class Ruby2Ruby < SexpProcessor
 
   def process_super(exp)
     args = exp.shift
-    args[0] = :arglist
+    args[0] = :arglist if args[0] == :array
     "super(#{process(args)})"
   end
 
