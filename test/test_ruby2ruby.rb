@@ -10,6 +10,7 @@ require 'pt_testcase'
 
 class TestRuby2Ruby < Test::Unit::TestCase
   def setup
+#    puts self.name
     @processor = Ruby2Ruby.new
   end
 
@@ -72,8 +73,8 @@ class TestRuby2Ruby < Test::Unit::TestCase
   end
 
   def test_unbound_method_to_ruby
-    r = "proc { ||\n  @processor = #{@processor.class}.new\n}"
-    m = self.class.instance_method(:setup)
+    r = "proc { ||\n  p = proc { (1 + 1) }\n  s = [:proc, nil, [:call, [:lit, 1], :+, [:array, [:lit, 1]]]]\n  assert_equal(s, p.to_sexp)\n}"
+    m = self.class.instance_method(:test_proc_to_sexp)
 
     assert_equal r, m.to_ruby
   end

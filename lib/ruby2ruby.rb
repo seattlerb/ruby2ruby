@@ -149,7 +149,7 @@ class Ruby2Ruby < SexpProcessor
     code << "begin"
     until exp.empty?
       src = process(exp.shift)
-      src = indent(src) unless src =~ /\nrescue/ # ensures no level 0 rescues
+      src = indent(src) unless src =~ /(^|\n)rescue/ # ensures no level 0 rescues
       code << src
     end
     code << "end" unless is_rescue
@@ -159,6 +159,7 @@ class Ruby2Ruby < SexpProcessor
   def process_block(exp)
     result = []
 
+    exp << nil if exp.empty?
     until exp.empty? do
       code = exp.shift
       if code.nil? or code.first == :nil then
@@ -319,18 +320,15 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_dasgn(exp)
-    "#{exp.shift.to_s} = #{process(exp.shift)}"
+    if exp.size == 1 then
+      exp.shift.to_s
+    else
+      "#{exp.shift} = #{process(exp.shift)}"
+    end
   end
 
   def process_defined(exp)
     "defined? #{process(exp.shift)}"
-  end
-
-  def process_defs(exp)
-    receiver = process(exp.shift)
-    name = exp.shift
-    exp.unshift "#{receiver}.#{name}"
-    process_defn(exp)
   end
 
   def process_defn(exp)
@@ -363,31 +361,17 @@ class Ruby2Ruby < SexpProcessor
     end
   end
 
+  def process_defs(exp)
+    exp.unshift "#{process(exp.shift)}.#{exp.shift}"
+    process_defn(exp)
+  end
+
   def process_dot2(exp)
     "(#{process exp.shift}..#{process exp.shift})"
   end
 
   def process_dot3(exp)
     "(#{process exp.shift}...#{process exp.shift})"
-  end
-
-  def util_dthing(exp, dump=false)
-    s = []
-    s << exp.shift.dump[1..-2]
-    until exp.empty?
-      pt = exp.shift
-      case pt.first
-      when :str then
-        if dump then
-          s << pt.last.dump[1..-2]
-        else
-          s << pt.last.gsub(%r%/%, '\/')
-        end
-      else
-        s << "#\{#{process(pt)}}"
-      end
-    end
-    s
   end
 
   def process_dregx(exp)
@@ -586,7 +570,7 @@ class Ruby2Ruby < SexpProcessor
     rhs = exp.empty? ? nil : exp.shift
 
     unless exp.empty? then
-      rhs[-1] = splat(rhs[-1])
+      rhs[-1] = splat(rhs[-1]) unless rhs == s(:splat)
       lhs << rhs
       rhs = exp.shift
     end
@@ -728,11 +712,18 @@ class Ruby2Ruby < SexpProcessor
       list = sexp.shift
       body = sexp.shift
 
-      var = if list and list.size > 1 and list.last.first == :lasgn then
+      var = if list and
+                list.size > 1 and
+                [:lasgn, :dasgn, :dasgn_curr].include? list.last.first then
               list.pop[1]
             else
               nil
             end
+
+      # FIX: omg this is horrid. I should be punished
+      var = body.delete_at(1)[1] if
+        [:dasgn_curr, :dasgn].include? body[1][0] unless
+        var or body.nil? rescue nil
 
       if list and list.size > 1 then
         list[0] = :arglist
@@ -768,24 +759,25 @@ class Ruby2Ruby < SexpProcessor
     current = self.context[1]
     case current
     when :begin, :ensure, :block then
-      body = process exp.shift
+      body = (exp.first.first == :resbody) ? nil : process(exp.shift)
       resbody = exp.empty? ? '' : process(exp.shift)
       els = exp.empty? ? nil : process(exp.shift)
 
       code = []
-      code << indent(body)
+      code << indent(body) if body
       code << resbody
       if els then
         code << "else"
         code << indent(els)
       else
-        unless [:block, :ensure].include? current then
-          code << "end\n"
+        unless [:block].include? current then
+          code << "end\n" unless current == :ensure
         else
-          r = [body, resbody.gsub(/rescue\n\s+/, 'rescue ')].join(' ')
+          r = [body, resbody.gsub(/rescue\n\s+/, 'rescue ')].compact.join(' ')
           code = [r] if (@indent+r).size < LINE_LENGTH and r !~ /\n/
         end
       end
+
       code.join("\n").chomp
     else # a rescue b and others
       body = process exp.shift
@@ -833,7 +825,11 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_splat(exp)
-    "*#{process(exp.shift)}"
+    if exp.empty? then
+      "*"
+    else
+      "*#{process(exp.shift)}"
+    end
   end
 
   def process_str(exp)
@@ -934,17 +930,36 @@ class Ruby2Ruby < SexpProcessor
   end
 
   ############################################################
-  # Rewriters
+  # Rewriters:
 
-  def rewrite_defs(exp)
-    receiver = exp.shift
-    result = rewrite_defn(exp)
-    result.unshift receiver
-    result
+  def rewrite_rescue exp
+    exp = s(:begin, exp) if
+      context[1] == :block unless
+      context[2] == :scope and [:defn, :defs].include? context[3]
+    exp
   end
 
   ############################################################
   # Utility Methods:
+
+  def util_dthing(exp, dump=false)
+    s = []
+    s << exp.shift.dump[1..-2]
+    until exp.empty?
+      pt = exp.shift
+      case pt.first
+      when :str then
+        if dump then
+          s << pt.last.dump[1..-2]
+        else
+          s << pt.last.gsub(%r%/%, '\/')
+        end
+      else
+        s << "#\{#{process(pt)}}"
+      end
+    end
+    s
+  end
 
   def util_module_or_class(exp, is_class=false)
     s = "#{exp.shift}"
