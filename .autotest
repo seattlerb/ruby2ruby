@@ -1,14 +1,5 @@
 # -*- ruby -*-
 
-class Autotest
-  alias :orig_find_files :find_files
-
-  def find_files
-    f = "../../ParseTree/dev/test/pt_testcase.rb"
-    orig_find_files.merge(f => File.stat(f).mtime)
-  end
-end
-
 Autotest.add_hook :initialize do |at|
   at.extra_files << "../../ParseTree/dev/test/pt_testcase.rb"
   at.extra_files << "../../ParseTree/dev/lib/unified_ruby.rb"
