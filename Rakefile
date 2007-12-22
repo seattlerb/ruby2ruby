@@ -13,7 +13,7 @@ Hoe.new('ruby2ruby', RubyToRuby::VERSION) do |p|
   p.summary = 'ruby2ruby provides a means of generating pure ruby code easily from ParseTree\'s Sexps.'
   p.description = p.paragraphs_of('README.txt', 2).join
   p.url = p.paragraphs_of('README.txt', 0).first.split(/\n/)[1..-1].map {|u| u.strip }
-  p.changes = p.paragraphs_of('History.txt', 0..1).join("\n\n")
+  p.changes = p.paragraphs_of('History.txt', 0..4).join("\n\n")
   p.clean_globs << File.expand_path("~/.ruby_inline")
   p.extra_deps << "ParseTree"
 end
