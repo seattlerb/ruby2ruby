@@ -30,39 +30,39 @@ class TestRuby2Ruby < Test::Unit::TestCase
 
   def util_thingy(type)
     s(type,
-      "blah",
+      'blah"blah',
       s(:call, s(:lit, 1), :+, s(:array, s(:lit, 1))),
       s(:str, 'blah"blah/blah'))
   end
 
   def test_dregx_slash
     inn = util_thingy(:dregx)
-    out = '/blah#{(1 + 1)}blah"blah\/blah/'
+    out = "/blah\\\"blah#\{(1 + 1)}blah\\\"blah\\/blah/"
 
     assert_equal out, @processor.process(inn)
 
     r = eval(out)
-    assert_equal(/blah2blah"blah\/blah/, r)
+    assert_equal(/blah\"blah2blah\"blah\/blah/, r)
   end
 
   def test_dstr_quote
     inn = util_thingy(:dstr)
-    out = '"blah#{(1 + 1)}blah\"blah/blah"'
+    out = "\"blah\\\"blah#\{(1 + 1)}blah\\\"blah/blah\""
 
     assert_equal out, @processor.process(inn)
 
     r = eval(out)
-    assert_equal "blah2blah\"blah/blah", r
+    assert_equal "blah\"blah2blah\"blah/blah", r
   end
 
   def test_dsym_quote
     inn = util_thingy(:dsym)
-    out = ':"blah#{(1 + 1)}blah\"blah/blah"'
+    out = ":\"blah\\\"blah#\{(1 + 1)}blah\\\"blah/blah\""
 
     assert_equal out, @processor.process(inn)
 
     r = eval(out)
-    assert_equal :"blah2blah\"blah/blah", r
+    assert_equal :"blah\"blah2blah\"blah/blah", r
   end
 
   def test_proc_to_sexp
@@ -102,6 +102,7 @@ def morph_and_eval(processor, target, gen, n)
     old_name = target.name
     new_name = target.name.sub(/\d*$/, gen.to_s)
     ruby = processor.translate(target).sub(old_name, new_name)
+
     eval ruby
     target.constants.each do |constant|
       eval "#{new_name}::#{constant} = #{old_name}::#{constant}"

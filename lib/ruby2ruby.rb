@@ -234,7 +234,7 @@ class Ruby2Ruby < SexpProcessor
     end
 
     case name
-    when :<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>> then #
+    when :<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>>, :** then
       "(#{receiver} #{name} #{args})"
     when :[] then
       "#{receiver}[#{args}]"
@@ -311,8 +311,14 @@ class Ruby2Ruby < SexpProcessor
 
   def process_dasgn_curr(exp)
     lhs = exp.shift.to_s
-    rhs = exp.shift rescue nil
-    return lhs if rhs.nil?
+    rhs = (exp.empty? ? nil : exp.shift)
+    if rhs.nil? then
+      if self.context[1] == :block then
+        return ''
+      end
+
+      return lhs
+    end
     return "#{lhs} = #{process rhs}" unless rhs.first == :dasgn_curr
 
     # keep recursing. ensure that the leaf node assigns to _something_
@@ -375,7 +381,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_dregx(exp)
-    "/#{util_dthing(exp).join}/"
+    "/" << util_dthing(exp, true) << "/"
   end
 
   def process_dregx_once(exp)
@@ -383,11 +389,11 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_dstr(exp)
-    "\"#{util_dthing(exp, true).join}\""
+    "\"#{util_dthing(exp)}\""
   end
 
   def process_dsym(exp)
-    ":" + process_dstr(exp)
+    ":#{process_dstr(exp)}"
   end
 
   def process_dvar(exp)
@@ -436,8 +442,13 @@ class Ruby2Ruby < SexpProcessor
   def process_for(exp)
     recv = process exp.shift
     iter = process exp.shift
-    body = process exp.shift
-    return "for #{iter} in #{recv}\n#{indent body}\nend\n"
+    body = exp.empty? ? nil : process(exp.shift)
+
+    result = ["for #{iter} in #{recv} do"]
+    result << indent(body ? body : "# do nothing")
+    result << "end"
+
+    result.join("\n")
   end
 
   def process_gasgn(exp)
@@ -873,12 +884,19 @@ class Ruby2Ruby < SexpProcessor
   def process_when(exp)
     src = []
 
+    if self.context[1] == :array then # ugh. matz! why not an argscat?!?
+      val = process(exp.shift)
+      exp.shift # empty body
+      return "*#{val}"
+    end
+
     until exp.empty?
       cond = process(exp.shift).to_s[1..-2]
       code = indent(process(exp.shift))
       code = indent "# do nothing" if code =~ /\A\s*\Z/
       src << "when #{cond} then\n#{code.chomp}"
     end
+
     src.join("\n")
   end
 
@@ -946,23 +964,39 @@ class Ruby2Ruby < SexpProcessor
   ############################################################
   # Utility Methods:
 
-  def util_dthing(exp, dump=false)
+  def util_dthing(exp, regx = false)
     s = []
-    s << exp.shift.dump[1..-2]
+    suck = true
+    if suck then
+      x = exp.shift.gsub(/"/, '\"').gsub(/\n/, '\n')
+    else
+      x = exp.shift.dump[1..-2]
+    end
+    x.gsub!(/\//, '\/') if regx
+
+    s << x
     until exp.empty?
       pt = exp.shift
-      case pt.first
-      when :str then
-        if dump then
-          s << pt.last.dump[1..-2]
+      case pt
+      when Sexp then
+        case pt.first
+        when :str then
+          if suck then
+            x = pt.last.gsub(/"/, '\"').gsub(/\n/, '\n')
+          else
+            x = pt.last.dump[1..-2]
+          end
+          x.gsub!(/\//, '\/') if regx
+          s << x
         else
-          s << pt.last.gsub(%r%/%, '\/')
+          s << '#{' << process(pt) << '}' # do not use interpolation here
         end
       else
-        s << "#\{#{process(pt)}}"
+        # do nothing - yet
       end
     end
-    s
+
+    s.join
   end
 
   def util_module_or_class(exp, is_class=false)
