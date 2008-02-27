@@ -15,7 +15,7 @@ class TestRuby2Ruby < Test::Unit::TestCase
 
   def test_proc_to_ruby
     block = proc { puts "something" }
-    assert_equal %Q|proc {\n  puts("something")\n}|, block.to_ruby
+    assert_equal 'proc { puts("something") }', block.to_ruby
   end
 
   def test_lit_regexp_slash
@@ -67,12 +67,12 @@ class TestRuby2Ruby < Test::Unit::TestCase
 
   def test_proc_to_sexp
     p = proc { 1 + 1 }
-    s = [:proc, nil, [:call, [:lit, 1], :+, [:array, [:lit, 1]]]]
+    s = [:iter, [:fcall, :proc], nil, [:call, [:lit, 1], :+, [:array, [:lit, 1]]]]
     assert_equal s, p.to_sexp
   end
 
   def test_unbound_method_to_ruby
-    r = "proc { ||\n  p = proc { (1 + 1) }\n  s = [:proc, nil, [:call, [:lit, 1], :+, [:array, [:lit, 1]]]]\n  assert_equal(s, p.to_sexp)\n}"
+    r = "proc { ||\n  p = proc { (1 + 1) }\n  s = [:iter, [:fcall, :proc], nil, [:call, [:lit, 1], :+, [:array, [:lit, 1]]]]\n  assert_equal(s, p.to_sexp)\n}"
     m = self.class.instance_method(:test_proc_to_sexp)
 
     assert_equal r, m.to_ruby

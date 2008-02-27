@@ -1054,7 +1054,7 @@ end
 
 class ProcStoreTmp
   @@n = 0
-  def self.name
+  def self.new_name
     @@n += 1
     return :"myproc#{@@n}"
   end
@@ -1062,7 +1062,7 @@ end
 
 class UnboundMethod
   def to_ruby
-    name = ProcStoreTmp.name
+    name = ProcStoreTmp.new_name
     ProcStoreTmp.send(:define_method, name, self)
     m = ProcStoreTmp.new.method(name)
     result = m.to_ruby.sub(/def #{name}(?:\(([^\)]*)\))?/,
@@ -1073,22 +1073,22 @@ end
 
 class Proc
   def to_method
-    name = ProcStoreTmp.name
+    name = ProcStoreTmp.new_name
     ProcStoreTmp.send(:define_method, name, self)
     ProcStoreTmp.new.method(name)
   end
 
   def to_sexp
-    body = self.to_method.to_sexp[2][1..-1]
-    [:proc, *body]
+    sexp = self.to_method.to_sexp
+    body = sexp[2]
+    body[0] = :block
+    args = body.delete_at 1
+    body = body[1] if body.size == 2
+
+    [:iter, [:fcall, :proc], args, body]
   end
 
   def to_ruby
-    ruby = self.to_method.to_ruby
-    ruby.sub!(/\A(def \S+)\(([^\)]*)\)/, '\1 |\2|')     # move args
-    ruby.sub!(/\Adef[^\n\|]+/, 'proc { ')               # strip def name
-    ruby.sub!(/end\Z/, '}')                             # strip end
-    ruby.gsub!(/\s+$/, '')                              # trailing WS bugs me
-    ruby
+    Ruby2Ruby.new.process(self.to_sexp).sub(/^\Aproc do/, 'proc {').sub(/end\Z/, '}')
   end
 end

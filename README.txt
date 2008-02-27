@@ -1,6 +1,7 @@
-ruby2ruby
-    http://seattlerb.rubyforge.org/
-    http://rubyforge.org/projects/seattlerb
+= ruby2ruby
+
+* http://seattlerb.rubyforge.org/
+* http://rubyforge.org/projects/seattlerb
 
 == DESCRIPTION:
 
