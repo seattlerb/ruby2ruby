@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby -w
 
 begin require 'rubygems'; rescue LoadError; end
-require 'parse_tree'
 require 'sexp_processor'
 require 'unified_ruby'
 
@@ -28,6 +27,7 @@ class Ruby2Ruby < SexpProcessor
                  ]
 
   def self.translate(klass_or_str, method = nil)
+    require 'parse_tree'
     self.new.process(ParseTree.translate(klass_or_str, method))
   end
 
@@ -1023,7 +1023,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def indent(s)
-    s.to_s.map{|line| @indent + line}.join
+    s.to_s.split(/\n/).map{|line| @indent + line}.join("\n")
   end
 end
 
@@ -1042,8 +1042,10 @@ class Method
   end
 
   def to_sexp
+    require 'parse_tree'
+    parser = ParseTree.new(false)
     with_class_and_method_name do |klass, method|
-      ParseTree.new(false).parse_tree_for_method(klass, method)
+      parser.parse_tree_for_method(klass, method)
     end
   end
 

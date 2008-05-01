@@ -4,19 +4,38 @@ $TESTING = true
 
 $: << 'lib'
 
+SKIP_PROCS = RUBY_VERSION >= "1.9" or defined? RUBY_ENGINE
+
 require 'test/unit'
 require 'ruby2ruby'
 require 'pt_testcase'
+require 'fileutils'
+require 'tmpdir'
 
 class TestRuby2Ruby < Test::Unit::TestCase
   def setup
+    super
     @processor = Ruby2Ruby.new
   end
 
+  def teardown
+    unless $DEBUG then
+      FileUtils.rm_rf @rootdir
+      ENV.delete 'INLINEDIR'
+    end if @rootdir
+  end
+
+  def util_setup_inline
+    @rootdir = File.join(Dir.tmpdir, "test_ruby_to_ruby.#{$$}")
+    Dir.mkdir @rootdir, 0700 unless test ?d, @rootdir
+    ENV['INLINEDIR'] = @rootdir
+  end
+
   def test_proc_to_ruby
+    util_setup_inline
     block = proc { puts "something" }
     assert_equal 'proc { puts("something") }', block.to_ruby
-  end
+  end unless SKIP_PROCS
 
   def test_lit_regexp_slash
     inn = s(:lit, /blah\/blah/)
@@ -66,17 +85,19 @@ class TestRuby2Ruby < Test::Unit::TestCase
   end
 
   def test_proc_to_sexp
+    util_setup_inline
     p = proc { 1 + 1 }
     s = [:iter, [:fcall, :proc], nil, [:call, [:lit, 1], :+, [:array, [:lit, 1]]]]
     assert_equal s, p.to_sexp
-  end
+  end unless SKIP_PROCS
 
   def test_unbound_method_to_ruby
-    r = "proc { ||\n  p = proc { (1 + 1) }\n  s = [:iter, [:fcall, :proc], nil, [:call, [:lit, 1], :+, [:array, [:lit, 1]]]]\n  assert_equal(s, p.to_sexp)\n}"
+    util_setup_inline
+    r = "proc { ||\n  util_setup_inline\n  p = proc { (1 + 1) }\n  s = [:iter, [:fcall, :proc], nil, [:call, [:lit, 1], :+, [:array, [:lit, 1]]]]\n  assert_equal(s, p.to_sexp)\n}"
     m = self.class.instance_method(:test_proc_to_sexp)
 
     assert_equal r, m.to_ruby
-  end
+  end unless SKIP_PROCS
 
   eval ParseTreeTestCase.testcases.map { |node, data|
     next if node == "vcall" # HACK
@@ -141,6 +162,7 @@ end
 morph_and_eval Ruby2Ruby, Ruby2Ruby, 2, 1 do
   class TestRuby2Ruby1 < TestRuby2Ruby
     def setup
+      super
       @processor = Ruby2Ruby2.new
     end
   end
@@ -151,6 +173,7 @@ morph_and_eval Ruby2Ruby, TestRuby2Ruby, 2, 2 do
   # Self-Translation: 3rd Generation - test Ruby2Ruby2 with TestRuby2Ruby1
   class TestRuby2Ruby3 < TestRuby2Ruby2
     def setup
+      super
       @processor = Ruby2Ruby2.new
     end
   end
@@ -160,6 +183,7 @@ end
 morph_and_eval(Ruby2Ruby2, Ruby2Ruby2, 3, 4) do
   class TestRuby2Ruby4 < TestRuby2Ruby3
     def setup
+      super
       @processor = Ruby2Ruby3.new
     end
   end
