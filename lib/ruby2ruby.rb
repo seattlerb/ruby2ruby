@@ -274,7 +274,10 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_cdecl(exp)
-    "#{exp.shift} = #{process(exp.shift)}"
+    lhs = exp.shift
+    lhs = process lhs if Sexp === lhs
+    rhs = process exp.shift
+    "#{lhs} = #{rhs}"
   end
 
   def process_class(exp)
@@ -1000,26 +1003,35 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def util_module_or_class(exp, is_class=false)
-    s = "#{exp.shift}"
+    result = []
+
+    name = exp.shift
+    name = process name if Sexp === name
+
+    result << name
 
     if is_class then
       superk = process(exp.shift)
-      s << " < #{superk}" if superk
+      result << " < #{superk}" if superk
     end
 
-    s << "\n"
+    result << "\n"
 
     body = []
     begin
       code = process(exp.shift).chomp
       body << code unless code.nil? or code.empty?
     end until exp.empty?
+
     unless body.empty? then
       body = indent(body.join("\n\n")) + "\n"
     else
       body = ""
     end
-    s + body + "end"
+    result << body
+    result << "end"
+
+    result.join
   end
 
   def indent(s)
