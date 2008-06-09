@@ -15,6 +15,9 @@ require 'tmpdir'
 FileUtils.rm_rf File.expand_path("~/.ruby_inline") # for self-translation
 
 class TestRuby2Ruby < Test::Unit::TestCase
+
+  alias :refute_nil :assert_not_nil unless defined? Mini
+
   def setup
     super
     @processor = Ruby2Ruby.new
@@ -108,8 +111,8 @@ class TestRuby2Ruby < Test::Unit::TestCase
        pt = #{data['ParseTree'].inspect}
        rb = #{(data['Ruby2Ruby'] || data['Ruby']).inspect}
 
-       assert_not_nil pt, \"ParseTree for #{node} undefined\"
-       assert_not_nil rb, \"Ruby for #{node} undefined\"
+       refute_nil pt, \"ParseTree for #{node} undefined\"
+       refute_nil rb, \"Ruby for #{node} undefined\"
 
        assert_equal rb, @processor.process(pt)
      end"
