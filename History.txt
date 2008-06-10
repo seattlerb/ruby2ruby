@@ -1,3 +1,22 @@
+=== 1.1.9 / 2008-06-09
+
+* 5 minor enhancements:
+
+  * Added more defensive programming in the tests to make it work with 1.9 and rubinius better.
+  * Converted r2r_show to more plain parse style, no more discover_new_classes.
+  * Made Proc#to_sexp and #to_ruby more resiliant.
+  * Started to work on fallback to ruby_parser code. Should prolly do flog first.
+  * Updated rakefile and readme format for hoe. Much cleaner!
+
+* 6 bug fixes:
+
+  * Added 1.9 fixes.
+  * Added code to tests to isolate rubyinline builds.
+  * Fixed miniunit-deprecated assertions
+  * Fixes for const2/3, esp in class names
+  * Renamed ProcStoreTmp#name to #new_name. dur.
+  * Skip proc tests in 1.9 since they require ParseTree.
+
 === 1.1.8 / 2007-08-21
 
 * 6 minor enhancements:

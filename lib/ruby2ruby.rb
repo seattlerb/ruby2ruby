@@ -7,7 +7,7 @@ require 'unified_ruby'
 class Ruby2Ruby < SexpProcessor
   include UnifiedRuby
 
-  VERSION = '1.1.8'
+  VERSION = '1.1.9'
   LINE_LENGTH = 78
 
   ##
