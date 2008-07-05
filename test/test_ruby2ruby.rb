@@ -30,35 +30,6 @@ class TestRuby2Ruby < Test::Unit::TestCase
     end if defined?(@rootdir) && @rootdir
   end
 
-  def util_setup_inline
-    @rootdir = File.join(Dir.tmpdir, "test_ruby_to_ruby.#{$$}")
-    Dir.mkdir @rootdir, 0700 unless test ?d, @rootdir
-    ENV['INLINEDIR'] = @rootdir
-  end
-
-  def test_proc_to_ruby
-    util_setup_inline
-    block = proc { puts "something" }
-    assert_equal 'proc { puts("something") }', block.to_ruby
-  end unless SKIP_PROCS
-
-  def test_lit_regexp_slash
-    inn = s(:lit, /blah\/blah/)
-    out = '/blah\/blah/'
-
-    assert_equal out, @processor.process(inn)
-
-    r = eval(out)
-    assert_equal(/blah\/blah/, r)
-  end
-
-  def util_thingy(type)
-    s(type,
-      'blah"blah',
-      s(:call, s(:lit, 1), :+, s(:array, s(:lit, 1))),
-      s(:str, 'blah"blah/blah'))
-  end
-
   def test_dregx_slash
     inn = util_thingy(:dregx)
     out = "/blah\\\"blah#\{(1 + 1)}blah\\\"blah\\/blah/"
@@ -89,20 +60,52 @@ class TestRuby2Ruby < Test::Unit::TestCase
     assert_equal :"blah\"blah2blah\"blah/blah", r
   end
 
+  def test_lit_regexp_slash
+    inn = s(:lit, /blah\/blah/)
+    out = '/blah\/blah/'
+
+    assert_equal out, @processor.process(inn)
+
+    r = eval(out)
+    assert_equal(/blah\/blah/, r)
+  end
+
+  def test_proc_to_ruby
+    util_setup_inline
+    block = proc { puts "something" }
+    assert_equal 'proc { puts("something") }', block.to_ruby
+  end unless SKIP_PROCS
+
   def test_proc_to_sexp
     util_setup_inline
     p = proc { 1 + 1 }
-    s = [:iter, [:fcall, :proc], nil, [:call, [:lit, 1], :+, [:array, [:lit, 1]]]]
+    s = s(:iter,
+          s(:call, nil, :proc, s(:arglist)),
+          nil,
+          s(:call, s(:lit, 1), :+, s(:arglist, s(:lit, 1))))
     assert_equal s, p.to_sexp
   end unless SKIP_PROCS
 
   def test_unbound_method_to_ruby
     util_setup_inline
-    r = "proc { ||\n  util_setup_inline\n  p = proc { (1 + 1) }\n  s = [:iter, [:fcall, :proc], nil, [:call, [:lit, 1], :+, [:array, [:lit, 1]]]]\n  assert_equal(s, p.to_sexp)\n}"
+    r = "proc { ||\n  util_setup_inline\n  p = proc { (1 + 1) }\n  s = s(:iter, s(:call, nil, :proc, s(:arglist)), nil, s(:call, s(:lit, 1), :+, s(:arglist, s(:lit, 1))))\n  assert_equal(s, p.to_sexp)\n}"
     m = self.class.instance_method(:test_proc_to_sexp)
 
     assert_equal r, m.to_ruby
   end unless SKIP_PROCS
+
+  def util_setup_inline
+    @rootdir = File.join(Dir.tmpdir, "test_ruby_to_ruby.#{$$}")
+    Dir.mkdir @rootdir, 0700 unless test ?d, @rootdir
+    ENV['INLINEDIR'] = @rootdir
+  end
+
+  def util_thingy(type)
+    s(type,
+      'blah"blah',
+      s(:call, s(:lit, 1), :+, s(:array, s(:lit, 1))),
+      s(:str, 'blah"blah/blah'))
+  end
 
   eval ParseTreeTestCase.testcases.map { |node, data|
     next if node == "vcall" # HACK
@@ -129,7 +132,7 @@ def morph_and_eval(processor, target, gen, n)
     target    = Object.const_get target    if Symbol === target
     old_name  = target.name
     new_name  = target.name.sub(/\d*$/, gen.to_s)
-    ruby = processor.translate(target).sub(old_name, new_name)
+    ruby      = processor.translate(target).sub(old_name, new_name)
 
     eval ruby
     target.constants.each do |constant|
@@ -138,6 +141,7 @@ def morph_and_eval(processor, target, gen, n)
   rescue Exception => e
     warn "Self-Translation Generation #{n} failed:"
     warn "#{e.class}: #{e.message}"
+    warn e.backtrace.join("\n  ")
     warn ""
     warn ruby
     warn ""

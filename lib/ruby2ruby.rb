@@ -5,8 +5,6 @@ require 'sexp_processor'
 require 'unified_ruby'
 
 class Ruby2Ruby < SexpProcessor
-  include UnifiedRuby
-
   VERSION = '1.1.9'
   LINE_LENGTH = 78
 
@@ -28,7 +26,9 @@ class Ruby2Ruby < SexpProcessor
 
   def self.translate(klass_or_str, method = nil)
     require 'parse_tree'
-    self.new.process(ParseTree.translate(klass_or_str, method))
+    sexp = ParseTree.translate(klass_or_str, method)
+    sexp = Unifier.new.process(sexp)
+    self.new.process(sexp)
   end
 
   def initialize
@@ -39,11 +39,6 @@ class Ruby2Ruby < SexpProcessor
     self.expected = String
 
     # self.debug[:defn] = /zsuper/
-  end
-
-  def process exp
-    exp = Sexp.from_array(exp) if Array === exp unless Sexp === exp
-    super exp
   end
 
   ############################################################
@@ -308,34 +303,6 @@ class Ruby2Ruby < SexpProcessor
     "#{exp.shift} = #{process(exp.shift)}"
   end
 
-  # (a, lit1)      => "a = 1"
-  # (a, (b, lit2)) => "a = b = 2"
-  # (a, (b))       => ""
-
-  def process_dasgn_curr(exp)
-    lhs = exp.shift.to_s
-    rhs = (exp.empty? ? nil : exp.shift)
-    if rhs.nil? then
-      if self.context[1] == :block then
-        return ''
-      end
-
-      return lhs
-    end
-    return "#{lhs} = #{process rhs}" unless rhs.first == :dasgn_curr
-
-    # keep recursing. ensure that the leaf node assigns to _something_
-    "#{lhs} = #{process rhs}"
-  end
-
-  def process_dasgn(exp)
-    if exp.size == 1 then
-      exp.shift.to_s
-    else
-      "#{exp.shift} = #{process(exp.shift)}"
-    end
-  end
-
   def process_defined(exp)
     "defined? #{process(exp.shift)}"
   end
@@ -399,10 +366,6 @@ class Ruby2Ruby < SexpProcessor
     ":#{process_dstr(exp)}"
   end
 
-  def process_dvar(exp)
-    exp.shift.to_s
-  end
-
   def process_dxstr(exp)
     "`#{process_dstr(exp)[1..-2]}`"
   end
@@ -419,19 +382,6 @@ class Ruby2Ruby < SexpProcessor
 
   def process_false(exp)
     "false"
-  end
-
-  # TODO: remove for unified
-  def process_fcall(exp)
-    recv = exp.shift unless Symbol === exp.first # HACK conditional - some not getting rewritten?
-    name = exp.shift.to_s
-    args = exp.shift
-    code = []
-    unless args.nil? then
-      args[0] = :arglist if args.first == :array
-      code << process(args)
-    end
-    return code.empty? ? name : "#{name}(#{code.join(', ')})"
   end
 
   def process_flip2(exp)
@@ -588,7 +538,7 @@ class Ruby2Ruby < SexpProcessor
     rhs = exp.empty? ? nil : exp.shift
 
     unless exp.empty? then
-      rhs[-1] = splat(rhs[-1]) unless rhs == s(:splat)
+      rhs[1] = splat(rhs[1]) unless rhs == s(:splat)
       lhs << rhs
       rhs = exp.shift
     end
@@ -604,7 +554,7 @@ class Ruby2Ruby < SexpProcessor
           process(l)
         end
       end
-    when :dasgn_curr then
+    when :lasgn then
       lhs = [ splat(lhs.last) ]
     when :splat then
       lhs = [ :"*" ]
@@ -613,7 +563,7 @@ class Ruby2Ruby < SexpProcessor
     end
 
     if context[1] == :iter and rhs then
-      lhs << splat(rhs.last)
+      lhs << splat(rhs[1])
       rhs = nil
     end
 
@@ -1055,14 +1005,18 @@ class Method
 
   def to_sexp
     require 'parse_tree'
+    require 'unified_ruby'
     parser = ParseTree.new(false)
+    unifier = Unifier.new
     with_class_and_method_name do |klass, method|
-      parser.parse_tree_for_method(klass, method)
+      old_sexp = parser.parse_tree_for_method(klass, method)
+      unifier.process(old_sexp) # HACK
     end
   end
 
   def to_ruby
-    Ruby2Ruby.new.process(self.to_sexp)
+    sexp = self.to_sexp
+    Ruby2Ruby.new.process sexp
   end
 end
 
@@ -1094,12 +1048,12 @@ class Proc
 
   def to_sexp
     sexp = self.to_method.to_sexp
-    body = sexp[2]
-    body[0] = :block
-    args = body.delete_at 1
+    body = sexp.scope.block
+    args = sexp.args
+    args = nil if args.size == 1
     body = body[1] if body.size == 2
 
-    [:iter, [:fcall, :proc], args, body]
+    s(:iter, s(:call, nil, :proc, s(:arglist)), args, body)
   end
 
   def to_ruby
