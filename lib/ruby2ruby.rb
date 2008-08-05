@@ -123,13 +123,13 @@ class Ruby2Ruby < SexpProcessor
     case name
     when :[]= then
       rhs = process args.pop
-      args[0] = :arglist if args[0] == :array
       "#{receiver}[#{process(args)}] = #{rhs}"
     else
-      if args then
-        "#{receiver}.#{name.to_s[0..-2]} = #{process(args)[1..-2]}"
+      name = name.to_s.sub(/=$/, '')
+      if args && args != s(:arglist) then
+        "#{receiver}.#{name} = #{process(args)}"
       else
-        "#{receiver}.#{name.to_s[0..-2]}"
+        "#{receiver}.#{name}"
       end
     end
   end
