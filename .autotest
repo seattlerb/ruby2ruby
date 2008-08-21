@@ -10,6 +10,6 @@ Autotest.add_hook :initialize do |at|
   end
 
   at.add_mapping(/unified|pt_testcase/) do |f, _|
-    at.files_matching(/^test.*rb$/)
+    at.files_matching(/test.*rb$/)
   end
 end
