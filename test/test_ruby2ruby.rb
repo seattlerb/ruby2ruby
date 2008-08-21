@@ -14,8 +14,29 @@ require 'tmpdir'
 
 FileUtils.rm_rf File.expand_path("~/.ruby_inline") # for self-translation
 
-class TestRuby2Ruby < Test::Unit::TestCase
+class R2RTestCase < ParseTreeTestCase
+  def self.previous key
+    "ParseTree"
+  end
 
+  def self.generate_test klass, node, data, input_name, output_name
+    output_name = data.has_key?('Ruby2Ruby') ? 'Ruby2Ruby' : 'Ruby'
+
+    klass.class_eval <<-EOM
+      def test_#{node}
+        pt = #{data[input_name].inspect}
+        rb = #{data[output_name].inspect}
+
+        refute_nil pt, \"ParseTree for #{node} undefined\"
+        refute_nil rb, \"Ruby for #{node} undefined\"
+
+        assert_equal rb, @processor.process(pt)
+      end
+    EOM
+  end
+end
+
+class TestRuby2Ruby < R2RTestCase
   alias :refute_nil :assert_not_nil unless defined? Mini
 
   def setup
@@ -106,20 +127,6 @@ class TestRuby2Ruby < Test::Unit::TestCase
       s(:call, s(:lit, 1), :+, s(:array, s(:lit, 1))),
       s(:str, 'blah"blah/blah'))
   end
-
-  eval ParseTreeTestCase.testcases.map { |node, data|
-    next if node == "vcall" # HACK
-
-    "def test_#{node}
-       pt = #{data['ParseTree'].inspect}
-       rb = #{(data['Ruby2Ruby'] || data['Ruby']).inspect}
-
-       refute_nil pt, \"ParseTree for #{node} undefined\"
-       refute_nil rb, \"Ruby for #{node} undefined\"
-
-       assert_equal rb, @processor.process(pt)
-     end"
-  }.join("\n")
 end
 
 ##
