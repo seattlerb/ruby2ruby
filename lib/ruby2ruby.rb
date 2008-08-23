@@ -17,6 +17,7 @@ class Ruby2Ruby < SexpProcessor
                   :flip3,
                   :lasgn,
                   :masgn,
+                  :attrasgn,
                   :op_asgn1,
                   :op_asgn2,
                   :op_asgn_and,
@@ -626,13 +627,13 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_op_asgn1(exp)
-    # [[:lvar, :b], [:array, [:lit, 1]], :"||", [:lit, 10]]
+    # [[:lvar, :b], [:arglist, [:lit, 1]], :"||", [:lit, 10]]
     lhs = process(exp.shift)
     index = process(exp.shift)
     msg = exp.shift
     rhs = process(exp.shift)
 
-    "#{lhs}#{index} #{msg}= #{rhs}"
+    "#{lhs}[#{index}] #{msg}= #{rhs}"
   end
 
   def process_op_asgn2(exp)
@@ -749,8 +750,9 @@ class Ruby2Ruby < SexpProcessor
       code.join("\n").chomp
     else # a rescue b and others
       body = process exp.shift
-      assert_type exp.first, :resbody
       resbody = exp.shift
+      assert_type resbody, :resbody
+
       resbody.shift # resbody
       resbody.shift # nil (no types for expression form)
       resbody = resbody.shift # actual code
@@ -907,10 +909,29 @@ class Ruby2Ruby < SexpProcessor
   ############################################################
   # Rewriters:
 
+  def rewrite_attrasgn exp
+    if context.first(2) == [:array, :masgn] then
+      exp[0] = :call
+      exp[2] = exp[2].to_s.sub(/=$/, '').to_sym
+    end
+
+    exp
+  end
+
+  def rewrite_ensure exp
+    exp = s(:begin, exp) unless context.first == :begin
+    exp
+  end
+
   def rewrite_rescue exp
+    has_rescue_value   = exp.resbody.array != s(:array)
+    has_no_rescue_body = exp.resbody.last.nil?
+
     exp = s(:begin, exp) if
-      context[1] == :block unless
-      context[2] == :scope and [:defn, :defs].include? context[3]
+      has_rescue_value || has_no_rescue_body ||
+      [:block, :iter].include?(context.first) unless
+      context[1] == :scope and [:defn, :defs].include? context[2] unless
+      context.first == :ensure
     exp
   end
 
