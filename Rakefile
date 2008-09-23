@@ -1,7 +1,9 @@
 # -*- ruby -*-
 
 dirs = (%w(lib ../../ParseTree/dev/test) +
-        %w(ParseTree RubyInline ruby_parser).map { |p| "../../#{p}/dev/lib" })
+        %w(ParseTree RubyInline ruby_parser sexp_processor).map { |p|
+          "../../#{p}/dev/lib"
+        })
 $:.push(*dirs)
 ENV['RUBY_FLAGS'] = "-I" + dirs.join(":")
 
