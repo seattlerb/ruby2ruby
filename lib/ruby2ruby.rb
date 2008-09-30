@@ -139,16 +139,16 @@ class Ruby2Ruby < SexpProcessor
     "$#{exp.shift}"
   end
 
+  # TODO: figure out how to do rescue and ensure ENTIRELY w/o begin
   def process_begin(exp)
-    is_rescue = exp.first.first == :rescue rescue false
     code = []
     code << "begin"
     until exp.empty?
       src = process(exp.shift)
-      src = indent(src) unless src =~ /(^|\n)rescue/ # ensures no level 0 rescues
+      src = indent(src) unless src =~ /(^|\n)rescue/ # ensure no level 0 rescues
       code << src
     end
-    code << "end" unless is_rescue
+    code << "end"
     return code.join("\n")
   end
 
@@ -272,8 +272,12 @@ class Ruby2Ruby < SexpProcessor
   def process_cdecl(exp)
     lhs = exp.shift
     lhs = process lhs if Sexp === lhs
-    rhs = process exp.shift
-    "#{lhs} = #{rhs}"
+    unless exp.empty? then
+      rhs = process(exp.shift)
+      "#{lhs} = #{rhs}"
+    else
+      lhs.to_s
+    end
   end
 
   def process_class(exp)
@@ -373,12 +377,17 @@ class Ruby2Ruby < SexpProcessor
 
   def process_ensure(exp)
     body = process exp.shift
-    ens  = process exp.shift
+    ens  = exp.shift
+    ens  = nil if ens == s(:nil)
+    ens  = process(ens) || "# do nothing"
+
+    body.sub!(/\n\s*end\z/, '')
+
     return "#{body}\nensure\n#{indent ens}"
   end
 
   def process_evstr(exp)
-    process exp.shift
+    exp.empty? ? '' : process(exp.shift)
   end
 
   def process_false(exp)
@@ -416,7 +425,13 @@ class Ruby2Ruby < SexpProcessor
   def process_hash(exp)
     result = []
     until exp.empty?
-      result << "#{process(exp.shift)} => #{process(exp.shift)}"
+      lhs = process(exp.shift)
+      rhs = exp.shift
+      t = rhs.first
+      rhs = process rhs
+      rhs = "(#{rhs})" unless [:lit, :str].include? t # TODO: verify better!
+
+      result << "#{lhs} => #{rhs}"
     end
 
     case self.context[1]
@@ -651,14 +666,14 @@ class Ruby2Ruby < SexpProcessor
     # a ||= 1
     # [[:lvar, :a], [:lasgn, :a, [:lit, 1]]]
     exp.shift
-    process(exp.shift).sub(/=/, '||=')
+    process(exp.shift).sub(/\=/, '||=')
   end
 
   def process_op_asgn_and(exp)
     # a &&= 1
     # [[:lvar, :a], [:lasgn, :a, [:lit, 1]]]
     exp.shift
-    process(exp.shift).sub(/=/, '&&=')
+    process(exp.shift).sub(/\=/, '&&=')
   end
 
   def process_or(exp)
@@ -673,98 +688,39 @@ class Ruby2Ruby < SexpProcessor
     "redo"
   end
 
-  def process_resbody(exp) # TODO: rewrite this fucker
-    code = []
+  def process_resbody exp
+    args = exp.shift
+    body = process(exp.shift) || "# do nothing"
 
-    sexp = exp
-    until exp.empty? and (sexp.nil? or sexp.empty?)
-      list = sexp.shift
-      body = sexp.shift
+    name = args.lasgn true
+    args = process(args)[1..-2]
+    args = " #{args}" unless args.empty?
+    args += " => #{name[1]}" if name
 
-      var = if list and
-                list.size > 1 and
-                [:lasgn, :dasgn, :dasgn_curr].include? list.last.first then
-              list.pop[1]
-            else
-              nil
-            end
-
-      # FIX: omg this is horrid. I should be punished
-      var = body.delete_at(1)[1] if
-        [:dasgn_curr, :dasgn].include? body[1][0] unless
-        var or body.nil? rescue nil
-
-      if list and list.size > 1 then
-        list[0] = :arglist
-        code << "rescue #{process(list)}"
-      else
-        code << "rescue"
-      end
-
-      code.last << " => #{var}" if var
-
-      if body then
-        code << indent(process(body)).chomp
-      else
-        code << indent("# do nothing")
-      end
-
-      unless exp.empty? then
-        sexp = exp.shift
-        assert_type sexp, :resbody
-        sexp.shift
-      end
-    end
-
-    code.join("\n")
+    "rescue#{args}\n#{indent body}"
   end
 
-  def process_rescue(exp)
-    # TODO: rewrite this
-    #
-    # a = b rescue c            =>                [lasgn a [rescue b c]]
-    # begin; a = b; rescue c    => [begin [rescue [lasgn a b] c]]
+  def process_rescue exp
+    body = process(exp.shift) unless exp.first.first == :resbody
+    els  = process(exp.pop)   unless exp.last.first  == :resbody
 
-    current = self.context[1]
-    case current
-    when :begin, :ensure, :block then
-      body = (exp.first.first == :resbody) ? nil : process(exp.shift)
-      resbody = exp.empty? ? '' : process(exp.shift)
-      els = exp.empty? ? nil : process(exp.shift)
+    body ||= "# do nothing"
+    simple = exp.size == 1
 
-      code = []
-      code << indent(body) if body
-      code << resbody
-      if els then
-        code << "else"
-        code << indent(els)
-      else
-        unless [:block].include? current then
-          code << "end\n" unless current == :ensure
-        else
-          r = [body, resbody.gsub(/rescue\n\s+/, 'rescue ')].compact.join(' ')
-          code = [r] if (@indent+r).size < LINE_LENGTH and r !~ /\n/
-        end
-      end
-
-      code.join("\n").chomp
-    else # a rescue b and others
-      body = process exp.shift
+    resbodies = []
+    until exp.empty? do
       resbody = exp.shift
-      assert_type resbody, :resbody
+      simple &&= resbody[1] == s(:array) && resbody[2] != nil
+      resbodies << process(resbody)
+    end
 
-      resbody.shift # resbody
-      resbody.shift # nil (no types for expression form)
-      resbody = resbody.shift # actual code
-
-      resbody = process resbody
-      code = "#{body} rescue #{resbody}"
-      case current
-      when :hash then # HACK move to process_hash
-        "(#{code})"
-      else
-        code
-      end
+    if els then
+      "#{indent body}\n#{resbodies.join("\n")}\nelse\n#{indent els}"
+    elsif simple then
+      resbody = resbodies.first.sub(/\n\s*/, ' ')
+      "#{body} #{resbody}"
+    else
+      "#{indent body}\n#{resbodies.join("\n")}"
     end
   end
 
@@ -924,14 +880,16 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def rewrite_rescue exp
-    has_rescue_value   = exp.resbody.array != s(:array)
-    has_no_rescue_body = exp.resbody.last.nil?
+    complex = false
+    complex ||= exp.size > 3
+    complex ||= exp.block
+    complex ||= exp.find_nodes(:resbody).any? { |n| n.array != s(:array) }
+    complex ||= exp.find_nodes(:resbody).any? { |n| n.last.nil? }
 
-    exp = s(:begin, exp) if
-      has_rescue_value || has_no_rescue_body ||
-      [:block, :iter].include?(context.first) unless
-      context[1] == :scope and [:defn, :defs].include? context[2] unless
-      context.first == :ensure
+    handled = context.first == :ensure
+
+    exp = s(:begin, exp) if complex unless handled
+
     exp
   end
 
