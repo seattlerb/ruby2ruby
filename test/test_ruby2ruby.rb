@@ -133,7 +133,9 @@ end
 # Converts a +target+ using a +processor+ and converts +target+ name
 # in the source adding +gen+ to allow easy renaming.
 
+$broken = false
 def morph_and_eval(processor, target, gen, n)
+  return if $broken
   begin
     processor = Object.const_get processor if Symbol === processor
     target    = Object.const_get target    if Symbol === target
@@ -152,6 +154,7 @@ def morph_and_eval(processor, target, gen, n)
     warn ""
     warn ruby
     warn ""
+    $broken = true
   else
     begin
       yield if block_given?
