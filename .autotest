@@ -1,9 +1,11 @@
 # -*- ruby -*-
 
+require 'autotest/restart'
+
 Autotest.add_hook :initialize do |at|
   at.extra_files << "../../ParseTree/dev/test/pt_testcase.rb"
   at.extra_files << "../../ParseTree/dev/lib/unified_ruby.rb"
-  at.libs << ":../../ParseTree/dev/lib:../../ParseTree/dev/test"
+  at.libs << ":../../sexp_processor/dev/lib:../../ParseTree/dev/lib:../../ParseTree/dev/test"
 
   (1..4).each do |n|
     at.extra_class_map["TestRuby2Ruby#{n}"] = "test/test_ruby2ruby.rb"
