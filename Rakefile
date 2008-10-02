@@ -1,14 +1,16 @@
 # -*- ruby -*-
 
-dirs = (%w(lib ../../ParseTree/dev/test) +
-        %w(ParseTree RubyInline ruby_parser sexp_processor).map { |p|
-          "../../#{p}/dev/lib"
-        })
-$:.push(*dirs)
-ENV['RUBY_FLAGS'] = "-I" + dirs.join(":")
-
 require 'rubygems'
 require 'hoe'
+
+Hoe.add_include_dirs("lib",
+                     "../../ZenTest/dev/lib",
+                     "../../ParseTree/dev/test",
+                     "../../ParseTree/dev/lib",
+                     "../../RubyInline/dev/lib",
+                     "../../ruby_parser/dev/lib",
+                     "../../sexp_processor/dev/lib")
+
 require './lib/ruby2ruby.rb'
 
 Hoe.new('ruby2ruby', RubyToRuby::VERSION) do |r2r|
