@@ -143,7 +143,10 @@ def morph_and_eval(processor, target, gen, n)
     new_name  = target.name.sub(/\d*$/, gen.to_s)
     ruby      = processor.translate(target).sub(old_name, new_name)
 
+    old, $-w = $-w, nil
     eval ruby
+    $-w = old
+
     target.constants.each do |constant|
       eval "#{new_name}::#{constant} = #{old_name}::#{constant}"
     end
