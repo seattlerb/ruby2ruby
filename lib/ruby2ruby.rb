@@ -692,7 +692,8 @@ class Ruby2Ruby < SexpProcessor
     args = exp.shift
     body = process(exp.shift) || "# do nothing"
 
-    name = args.lasgn true
+    name =   args.lasgn true
+    name ||= args.iasgn true
     args = process(args)[1..-2]
     args = " #{args}" unless args.empty?
     args += " => #{name[1]}" if name
