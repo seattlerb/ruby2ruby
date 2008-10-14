@@ -5,7 +5,7 @@ require 'sexp_processor'
 require 'unified_ruby'
 
 class Ruby2Ruby < SexpProcessor
-  VERSION = '1.1.9'
+  VERSION = '1.2.0'
   LINE_LENGTH = 78
 
   ##
@@ -53,6 +53,14 @@ class Ruby2Ruby < SexpProcessor
     "(#{process exp.shift} and #{process exp.shift})"
   end
 
+  def process_arglist(exp) # custom made node
+    code = []
+    until exp.empty? do
+      code << process(exp.shift)
+    end
+    code.join ', '
+  end
+
   def process_args(exp)
     args = []
 
@@ -72,8 +80,6 @@ class Ruby2Ruby < SexpProcessor
           args.each_with_index do |name, index|
             args[index] = asgns[name] if asgns.has_key? name
           end
-        when :block_arg then
-          args << "&#{arg.last}"
         else
           raise "unknown arg type #{arg.first.inspect}"
         end
@@ -83,33 +89,6 @@ class Ruby2Ruby < SexpProcessor
     end
 
     return "(#{args.join ', '})"
-  end
-
-  def process_arglist(exp) # custom made node
-    code = []
-    until exp.empty? do
-      code << process(exp.shift)
-    end
-    code.join ', '
-  end
-
-  def process_argscat(exp)
-    args = []
-
-    ary = exp.shift
-    ary.shift # :array
-    until ary.empty? do
-      args << process(ary.shift)
-    end
-
-    args << "*#{process(exp.shift)}"
-    args << process(exp.shift) unless exp.empty? # optional block arg
-
-    args.join ', '
-  end
-
-  def process_argspush(exp)
-    process_arglist(exp)
   end
 
   def process_array(exp)
@@ -129,8 +108,6 @@ class Ruby2Ruby < SexpProcessor
       name = name.to_s.sub(/=$/, '')
       if args && args != s(:arglist) then
         "#{receiver}.#{name} = #{process(args)}"
-      else
-        "#{receiver}.#{name}"
       end
     end
   end
@@ -177,30 +154,10 @@ class Ruby2Ruby < SexpProcessor
     return result
   end
 
-  def process_block_arg(exp)
-    "&#{exp.shift}"
-  end
+  def process_block_pass exp
+    raise "huh?: #{exp.inspect}" if exp.size > 1
 
-  def process_block_pass(exp)
-    bname = s(:block_arg, process(exp.shift)) # FIX
-    call = exp.shift
-
-    if Array === call.last then # HACK - I _really_ need rewrites to happen first
-      case call.last.first
-      when :splat then
-        call << [:array, call.pop]
-      when :array then
-        # do nothing
-      else
-        has_args = Array === call.last and call.last.first == :array
-        call << [:array] unless has_args
-      end
-      call.last << bname
-    else
-      call << [:array, bname]
-    end
-
-    process(call)
+    "&#{process exp.shift}"
   end
 
   def process_break(exp)
@@ -585,14 +542,8 @@ class Ruby2Ruby < SexpProcessor
 
     unless rhs.nil? then
       t = rhs.first
-      rhs = if t == :argscat then
-              rhs.shift
-              process_argscat(rhs)
-            else
-              r = process(rhs)
-              r = r[1..-2] if t != :to_ary
-              r
-            end
+      rhs = process rhs
+      rhs = rhs[1..-2] if t != :to_ary
       return "#{lhs.join(", ")} = #{rhs}"
     else
       return lhs.join(", ")
@@ -662,18 +613,18 @@ class Ruby2Ruby < SexpProcessor
     "#{lhs}.#{index} #{msg}= #{rhs}"
   end
 
-  def process_op_asgn_or(exp)
-    # a ||= 1
-    # [[:lvar, :a], [:lasgn, :a, [:lit, 1]]]
-    exp.shift
-    process(exp.shift).sub(/\=/, '||=')
-  end
-
   def process_op_asgn_and(exp)
     # a &&= 1
     # [[:lvar, :a], [:lasgn, :a, [:lit, 1]]]
     exp.shift
     process(exp.shift).sub(/\=/, '&&=')
+  end
+
+  def process_op_asgn_or(exp)
+    # a ||= 1
+    # [[:lvar, :a], [:lasgn, :a, [:lit, 1]]]
+    exp.shift
+    process(exp.shift).sub(/\=/, '||=')
   end
 
   def process_or(exp)
@@ -764,13 +715,20 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_super(exp)
-    args = exp.shift
-    args[0] = :arglist if args[0] == :array
-    "super(#{process(args)})"
+    args = []
+    until exp.empty? do
+      args << process(exp.shift)
+    end
+
+    "super(#{args.join(', ')})"
   end
 
   def process_svalue(exp)
-    process(exp.shift)
+    code = []
+    until exp.empty? do
+      code << process(exp.shift)
+    end
+    code.join(", ")
   end
 
   def process_to_ary(exp)
@@ -821,22 +779,16 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_yield(exp)
-    args = exp.empty? ? nil : exp.shift
-    if args then
-      args[0] = :arglist if args.first == :array
-      args = process(args)
+    args = []
+    until exp.empty? do
+      args << process(exp.shift)
     end
 
-    # "yield" + (args ? "(#{args})" : "")
-    if args then
-      "yield(#{args})"
+    unless args.empty? then
+      "yield(#{args.join(', ')})"
     else
       "yield"
     end
-  end
-
-  def process_zarray(exp)
-    "[]"
   end
 
   def process_zsuper(exp)
@@ -894,17 +846,24 @@ class Ruby2Ruby < SexpProcessor
     exp
   end
 
+  def rewrite_svalue(exp)
+    case exp.last.first
+    when :array
+      s(:svalue, *exp[1][1..-1])
+    when :splat
+      exp
+    else
+      raise "huh: #{exp.inspect}"
+    end
+  end
+
   ############################################################
   # Utility Methods:
 
   def util_dthing(exp, regx = false)
     s = []
     suck = true
-    if suck then
-      x = exp.shift.gsub(/"/, '\"').gsub(/\n/, '\n')
-    else
-      x = exp.shift.dump[1..-2]
-    end
+    x = exp.shift.gsub(/"/, '\"').gsub(/\n/, '\n')
     x.gsub!(/\//, '\/') if regx
 
     s << x
@@ -914,18 +873,15 @@ class Ruby2Ruby < SexpProcessor
       when Sexp then
         case pt.first
         when :str then
-          if suck then
-            x = pt.last.gsub(/"/, '\"').gsub(/\n/, '\n')
-          else
-            x = pt.last.dump[1..-2]
-          end
+          x = pt.last.gsub(/"/, '\"').gsub(/\n/, '\n')
           x.gsub!(/\//, '\/') if regx
           s << x
         else
           s << '#{' << process(pt) << '}' # do not use interpolation here
         end
       else
-        # do nothing - yet
+        # HACK: raise "huh?: #{pt.inspect}"
+        # do nothing for now
       end
     end
 
@@ -966,77 +922,5 @@ class Ruby2Ruby < SexpProcessor
 
   def indent(s)
     s.to_s.split(/\n/).map{|line| @indent + line}.join("\n")
-  end
-end
-
-RubyToRuby = Ruby2Ruby # For backwards compatibilty... TODO: remove 2008-03-28
-
-class Method
-  def with_class_and_method_name
-    if self.inspect =~ /<Method: (.*)\#(.*)>/ then
-      klass = eval $1
-      method  = $2.intern
-      raise "Couldn't determine class from #{self.inspect}" if klass.nil?
-      return yield(klass, method)
-    else
-      raise "Can't parse signature: #{self.inspect}"
-    end
-  end
-
-  def to_sexp
-    require 'parse_tree'
-    require 'unified_ruby'
-    parser = ParseTree.new(false)
-    unifier = Unifier.new
-    with_class_and_method_name do |klass, method|
-      old_sexp = parser.parse_tree_for_method(klass, method)
-      unifier.process(old_sexp) # HACK
-    end
-  end
-
-  def to_ruby
-    sexp = self.to_sexp
-    Ruby2Ruby.new.process sexp
-  end
-end
-
-class ProcStoreTmp
-  @@n = 0
-  def self.new_name
-    @@n += 1
-    return :"myproc#{@@n}"
-  end
-end
-
-class UnboundMethod
-  def to_ruby
-    name = ProcStoreTmp.new_name
-    ProcStoreTmp.send(:define_method, name, self)
-    m = ProcStoreTmp.new.method(name)
-    result = m.to_ruby.sub(/def #{name}(?:\(([^\)]*)\))?/,
-                           'proc { |\1|').sub(/end\Z/, '}')
-    return result
-  end
-end
-
-class Proc
-  def to_method
-    name = ProcStoreTmp.new_name
-    ProcStoreTmp.send(:define_method, name, self)
-    ProcStoreTmp.new.method(name)
-  end
-
-  def to_sexp
-    sexp = self.to_method.to_sexp
-    body = sexp.scope.block
-    args = sexp.args
-    args = nil if args.size == 1
-    body = body[1] if body.size == 2
-
-    s(:iter, s(:call, nil, :proc, s(:arglist)), args, body)
-  end
-
-  def to_ruby
-    Ruby2Ruby.new.process(self.to_sexp).sub(/^\Aproc do/, 'proc {').sub(/end\Z/, '}')
   end
 end

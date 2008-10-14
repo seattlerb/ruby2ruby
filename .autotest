@@ -15,3 +15,7 @@ Autotest.add_hook :initialize do |at|
     at.files_matching(/test.*rb$/)
   end
 end
+
+require 'autotest/rcov'
+Autotest::RCov.command = 'rcov_info'
+Autotest::RCov.pattern = 'test/test_ruby2ruby.rb'

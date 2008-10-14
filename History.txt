@@ -1,3 +1,10 @@
+=== 1.2.0 / ????-??-??
+
+* 2 minor enhancements:
+
+  * Removed all PT dependent code to PT project (see parse_tree_extensions.rb).
+  * Revamped. Got working with new unified ruby output. Much much cleaner.
+
 === 1.1.9 / 2008-06-09
 
 * 5 minor enhancements:
