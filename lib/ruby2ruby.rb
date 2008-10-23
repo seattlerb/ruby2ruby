@@ -300,7 +300,14 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_defs(exp)
-    exp.unshift "#{process(exp.shift)}.#{exp.shift}"
+    lhs  = exp.shift
+    var = [:self, :cvar, :dvar, :ivar, :gvar, :lvar].include? lhs.first
+    name = exp.shift
+
+    lhs = process(lhs)
+    lhs = "(#{lhs})" unless var
+
+    exp.unshift "#{lhs}.#{name}"
     process_defn(exp)
   end
 
