@@ -5,7 +5,7 @@ require 'sexp_processor'
 require 'unified_ruby'
 
 class Ruby2Ruby < SexpProcessor
-  VERSION = '1.2.0'
+  VERSION = '1.2.1'
   LINE_LENGTH = 78
 
   ##
@@ -824,6 +824,12 @@ class Ruby2Ruby < SexpProcessor
 
   ############################################################
   # Rewriters:
+
+  def rewrite_array exp
+    return exp unless [:yield, :splat, :super].include? context.first
+    exp = exp.last if exp.size == 2 && exp.last.first == :splat
+    exp
+  end
 
   def rewrite_attrasgn exp
     if context.first(2) == [:array, :masgn] then

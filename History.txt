@@ -1,3 +1,9 @@
+=== 1.2.1 / 2008-11-01
+
+* N bug fixes:
+
+  * Added an array rewriter to deal with splat containment changes in PT.
+
 === 1.2.0 / 2008-10-22
 
 * 2 minor enhancements:
