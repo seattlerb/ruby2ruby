@@ -28,7 +28,15 @@ class Ruby2Ruby < SexpProcessor
   def self.translate(klass_or_str, method = nil)
     require 'parse_tree'
     sexp = ParseTree.translate(klass_or_str, method)
-    sexp = Unifier.new.process(sexp)
+
+    unifier = Unifier.new
+
+    unifier.processors.each do |p|
+      p.unsupported.delete :cfunc # HACK
+    end
+
+    sexp = unifier.process(sexp)
+
     self.new.process(sexp)
   end
 
@@ -825,12 +833,6 @@ class Ruby2Ruby < SexpProcessor
   ############################################################
   # Rewriters:
 
-  def rewrite_array exp
-    return exp unless [:yield, :splat, :super].include? context.first
-    exp = exp.last if exp.size == 2 && exp.last.first == :splat
-    exp
-  end
-
   def rewrite_attrasgn exp
     if context.first(2) == [:array, :masgn] then
       exp[0] = :call
@@ -918,8 +920,8 @@ class Ruby2Ruby < SexpProcessor
 
     body = []
     begin
-      code = process(exp.shift).chomp
-      body << code unless code.nil? or code.empty?
+      code = process(exp.shift)
+      body << code.chomp unless code.nil? or code.chomp.empty?
     end until exp.empty?
 
     unless body.empty? then

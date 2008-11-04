@@ -4,7 +4,7 @@ $TESTING = true
 
 $: << 'lib'
 
-SKIP_PROCS = RUBY_VERSION >= "1.9" or defined? RUBY_ENGINE
+SKIP_PROCS = ENV['FAST'] or RUBY_VERSION >= "1.9" or defined? RUBY_ENGINE
 
 require 'test/unit'
 require 'ruby2ruby'
