@@ -487,8 +487,10 @@ class Ruby2Ruby < SexpProcessor
     result << "#{iter} #{b}"
     result << " |#{args}|" if args
     result << "\n"
-    result << indent(body.strip)
-    result << "\n"
+    if body then
+      result << indent(body.strip)
+      result << "\n"
+    end
     result << e
     result.join
   end
