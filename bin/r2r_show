@@ -1,15 +1,17 @@
-#!/usr/local/bin/ruby -ws
+#!/usr/bin/ruby -ws
 
-begin require 'rubygems' rescue LoadError end
+require 'rubygems'
 require 'ruby2ruby'
 require 'parse_tree'
 
 $h ||= false
+$s ||= false
 
 if $h then
   puts "usage: #{File.basename $0} [options] [file...]"
   puts "options:"
-  puts "-h      : display usage"
+  puts "-h     : display usage"
+  puts "-s     : print the sexp before displaying the translated ruby"
 
   exit 1
 end
@@ -22,7 +24,9 @@ ruby2ruby  = Ruby2Ruby.new
 ARGV.each do |file|
   ruby = file == "-" ? $stdin.read : File.read(file)
 
-  sexp = parse_tree.parse_tree_for_string(ruby, file).first
+  sexp = parse_tree.process(ruby, nil, file)
+
+  p sexp if $s
 
   puts ruby2ruby.process(sexp)
 end
