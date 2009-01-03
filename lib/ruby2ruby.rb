@@ -54,7 +54,7 @@ class Ruby2Ruby < SexpProcessor
   # Processors
 
   def process_alias(exp)
-    "alias_method #{process(exp.shift)}, #{process(exp.shift)}"
+    "alias #{process(exp.shift)} #{process(exp.shift)}"
   end
 
   def process_and(exp)
@@ -186,29 +186,29 @@ class Ruby2Ruby < SexpProcessor
       Ruby2Ruby::ASSIGN_NODES.include? receiver_node_type
 
     name = exp.shift
-    args_exp = exp.shift rescue nil
-    if args_exp && args_exp.first == :array # FIX
-      args = "#{process(args_exp)[1..-2]}"
-    else
-      args = process args_exp
-      args = nil if args.empty?
-    end
+    args = exp.shift rescue nil
 
     case name
     when :<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>>, :** then
-      "(#{receiver} #{name} #{args})"
+      "(#{receiver} #{name} #{process args})"
     when :[] then
-      "#{receiver}[#{args}]"
+      receiver = "self" if receiver.nil?
+      "#{receiver}[#{process args}]"
+    when :[]= then
+      receiver = "self" if receiver.nil?
+      lhs = args.pop
+      "#{receiver}[#{process args}] = #{process lhs}"
     when :"-@" then
       "-#{receiver}"
     when :"+@" then
       "+#{receiver}"
     else
-      unless receiver.nil? then
-        "#{receiver}.#{name}#{args ? "(#{args})" : args}"
-      else
-        "#{name}#{args ? "(#{args})" : args}"
-      end
+      args     = process args
+      args     = nil            if args.empty?
+      args     = "(#{args})"    if args
+      receiver = "#{receiver}." if receiver
+
+      "#{receiver}#{name}#{args}"
     end
   end
 
@@ -408,7 +408,11 @@ class Ruby2Ruby < SexpProcessor
 
     case self.context[1]
     when :arglist, :argscat then
-      return "#{result.join(', ')}" # HACK - this will break w/ 2 hashes as args
+      unless result.empty? then
+        return "#{result.join(', ')}" # HACK - this will break w/ 2 hashes as args
+      else
+        return "{}"
+      end
     else
       return "{ #{result.join(', ')} }"
     end
@@ -527,12 +531,6 @@ class Ruby2Ruby < SexpProcessor
     lhs = exp.shift
     rhs = exp.empty? ? nil : exp.shift
 
-    unless exp.empty? then
-      rhs[1] = splat(rhs[1]) unless rhs == s(:splat)
-      lhs << rhs
-      rhs = exp.shift
-    end
-
     case lhs.first
     when :array then
       lhs.shift
@@ -560,12 +558,11 @@ class Ruby2Ruby < SexpProcessor
     unless rhs.nil? then
       t = rhs.first
       rhs = process rhs
-      rhs = rhs[1..-2] if t != :to_ary
+      rhs = rhs[1..-2] if t == :array # FIX: bad? I dunno
       return "#{lhs.join(", ")} = #{rhs}"
     else
       return lhs.join(", ")
     end
-
   end
 
   def process_match(exp)
