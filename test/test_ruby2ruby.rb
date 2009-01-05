@@ -54,41 +54,85 @@ class TestRuby2Ruby < R2RTestCase
   def test_dregx_slash
     inn = util_thingy(:dregx)
     out = "/blah\\\"blah#\{(1 + 1)}blah\\\"blah\\/blah/"
-
-    assert_equal out, @processor.process(inn)
-
-    r = eval(out)
-    assert_equal(/blah\"blah2blah\"blah\/blah/, r)
+    util_compare inn, out, /blah\"blah2blah\"blah\/blah/
   end
 
   def test_dstr_quote
     inn = util_thingy(:dstr)
     out = "\"blah\\\"blah#\{(1 + 1)}blah\\\"blah/blah\""
-
-    assert_equal out, @processor.process(inn)
-
-    r = eval(out)
-    assert_equal "blah\"blah2blah\"blah/blah", r
+    util_compare inn, out, "blah\"blah2blah\"blah/blah"
   end
 
   def test_dsym_quote
     inn = util_thingy(:dsym)
     out = ":\"blah\\\"blah#\{(1 + 1)}blah\\\"blah/blah\""
-
-    assert_equal out, @processor.process(inn)
-
-    r = eval(out)
-    assert_equal :"blah\"blah2blah\"blah/blah", r
+    util_compare inn, out, :"blah\"blah2blah\"blah/blah"
   end
 
   def test_lit_regexp_slash
-    inn = s(:lit, /blah\/blah/)
-    out = '/blah\/blah/'
+    util_compare s(:lit, /blah\/blah/), '/blah\/blah/', /blah\/blah/
+  end
 
-    assert_equal out, @processor.process(inn)
+  def test_call_self_index
+    util_compare s(:call, nil, :[], s(:arglist, s(:lit, 42))), "self[42]"
+  end
 
-    r = eval(out)
-    assert_equal(/blah\/blah/, r)
+  def test_call_self_index_equals
+    util_compare(s(:call, nil, :[]=, s(:arglist, s(:lit, 42), s(:lit, 24))),
+                 "self[42] = 24")
+  end
+
+  def test_masgn_wtf
+    inn = s(:block,
+            s(:masgn,
+              s(:array, s(:lasgn, :k), s(:lasgn, :v)),
+              s(:array,
+                s(:splat,
+                  s(:call,
+                    s(:call, nil, :line, s(:arglist)),
+                    :split,
+                    s(:arglist, s(:lit, /\=/), s(:lit, 2)))))),
+            s(:attrasgn,
+              s(:self),
+              :[]=,
+              s(:arglist, s(:lvar, :k),
+                s(:call, s(:lvar, :v), :strip, s(:arglist)))))
+
+    out = "k, v = *line.split(/\\=/, 2)\nself[k] = v.strip\n"
+
+    util_compare inn, out
+  end
+
+
+  def test_masgn_splat_wtf
+    inn = s(:masgn,
+            s(:array, s(:lasgn, :k), s(:lasgn, :v)),
+            s(:array,
+              s(:splat,
+                s(:call,
+                  s(:call, nil, :line, s(:arglist)),
+                  :split,
+                  s(:arglist, s(:lit, /\=/), s(:lit, 2))))))
+    out = 'k, v = *line.split(/\\=/, 2)'
+    util_compare inn, out
+  end
+
+  def test_splat_call
+    inn = s(:call, nil, :x,
+            s(:arglist,
+              s(:splat,
+                s(:call,
+                  s(:call, nil, :line, s(:arglist)),
+                  :split,
+                  s(:arglist, s(:lit, /=/), s(:lit, 2))))))
+
+    out = 'x(*line.split(/=/, 2))'
+    util_compare inn, out
+  end
+
+  def util_compare sexp, expected_ruby, expected_eval = nil
+    assert_equal expected_ruby, @processor.process(sexp)
+    assert_equal expected_eval, eval(expected_ruby) if expected_eval
   end
 
   def util_setup_inline
@@ -100,7 +144,7 @@ class TestRuby2Ruby < R2RTestCase
   def util_thingy(type)
     s(type,
       'blah"blah',
-      s(:call, s(:lit, 1), :+, s(:array, s(:lit, 1))),
+      s(:call, s(:lit, 1), :+, s(:arglist, s(:lit, 1))),
       s(:str, 'blah"blah/blah'))
   end
 end
