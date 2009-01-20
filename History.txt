@@ -1,3 +1,18 @@
+=== 1.2.2 / 2009-01-20
+
+* 3 minor enhancements:
+
+  * Added -s to display sexp before printing r2r
+  * Added a bunch of backslash and masgn tests.
+  * Refactored tests.
+
+* 4 bug fixes:
+
+  * Fixed iters to deal with empty bodies.
+  * Fixed process_call for a number of cases incl [], []=, and args processing.
+  * Fixed process_hash to always generate braces if in arglist.
+  * Switched process_alias to producing alias again, needed for globals.
+
 === 1.2.1 / 2008-11-04
 
 * 1 bug fix:

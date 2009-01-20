@@ -5,7 +5,7 @@ require 'sexp_processor'
 require 'unified_ruby'
 
 class Ruby2Ruby < SexpProcessor
-  VERSION = '1.2.1'
+  VERSION = '1.2.2'
   LINE_LENGTH = 78
 
   ##
