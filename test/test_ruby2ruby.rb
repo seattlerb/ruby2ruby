@@ -6,7 +6,7 @@ $: << 'lib'
 
 SKIP_PROCS = ENV['FAST'] or RUBY_VERSION >= "1.9" or defined? RUBY_ENGINE
 
-require 'test/unit'
+require 'minitest/autorun'
 require 'ruby2ruby'
 require 'pt_testcase'
 require 'fileutils'
@@ -37,8 +37,6 @@ class R2RTestCase < ParseTreeTestCase
 end
 
 class TestRuby2Ruby < R2RTestCase
-  alias :refute_nil :assert_not_nil unless defined? Mini
-
   def setup
     super
     @processor = Ruby2Ruby.new
