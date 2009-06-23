@@ -1,8 +1,7 @@
 #!/usr/bin/env ruby -w
 
-begin require 'rubygems'; rescue LoadError; end
+require 'rubygems'
 require 'sexp_processor'
-require 'unified_ruby'
 
 class Ruby2Ruby < SexpProcessor
   VERSION = '1.2.2'
@@ -24,21 +23,6 @@ class Ruby2Ruby < SexpProcessor
                   :op_asgn_or,
                   :return,
                  ]
-
-  def self.translate(klass_or_str, method = nil)
-    require 'parse_tree'
-    sexp = ParseTree.translate(klass_or_str, method)
-
-    unifier = Unifier.new
-
-    unifier.processors.each do |p|
-      p.unsupported.delete :cfunc # HACK
-    end
-
-    sexp = unifier.process(sexp)
-
-    self.new.process(sexp)
-  end
 
   def initialize
     super
