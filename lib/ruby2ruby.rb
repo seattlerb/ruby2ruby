@@ -4,7 +4,7 @@ require 'rubygems'
 require 'sexp_processor'
 
 class Ruby2Ruby < SexpProcessor
-  VERSION = '1.2.2'
+  VERSION = '1.2.3'
   LINE_LENGTH = 78
 
   ##
