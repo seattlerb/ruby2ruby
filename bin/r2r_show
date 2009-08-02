@@ -2,7 +2,7 @@
 
 require 'rubygems'
 require 'ruby2ruby'
-require 'parse_tree'
+require 'ruby_parser'
 
 $h ||= false
 $s ||= false
@@ -18,13 +18,13 @@ end
 
 ARGV.push "-" if ARGV.empty?
 
-parse_tree = ParseTree.new
-ruby2ruby  = Ruby2Ruby.new
+parser    = RubyParser.new
+ruby2ruby = Ruby2Ruby.new
 
 ARGV.each do |file|
   ruby = file == "-" ? $stdin.read : File.read(file)
 
-  sexp = parse_tree.process(ruby, nil, file)
+  sexp = parser.process(ruby, file)
 
   p sexp if $s
 
