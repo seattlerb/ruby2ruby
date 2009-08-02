@@ -6,20 +6,43 @@
 == DESCRIPTION:
 
 ruby2ruby provides a means of generating pure ruby code easily from
-ParseTree's Sexps. This makes making dynamic language processors much
-easier in ruby than ever before.
+RubyParser compatible Sexps. This makes making dynamic language
+processors in ruby easier than ever!
 
 == FEATURES/PROBLEMS:
   
-* Clean, simple SexpProcessor generates ruby code from ParseTree's output.
+* Clean, simple SexpProcessor generates ruby code from RubyParser compatible sexps.
 
 == SYNOPSYS:
 
-    RubyToRuby.translate(MyClass, :mymethod) # => "def mymethod..."
+    require 'rubygems'
+    require 'ruby2ruby'
+    require 'ruby_parser'
+    require 'pp'
+    
+    ruby      = "def a\n  puts 'A'\nend\n\ndef b\n  a\nend"
+    parser    = RubyParser.new
+    ruby2ruby = Ruby2Ruby.new
+    sexp      = parser.process(ruby)
+    
+    pp sexp
+
+    p ruby2ruby.process(sexp)
+    
+    ## outputs:
+
+    s(:block,
+     s(:defn,
+      :a,
+      s(:args),
+      s(:scope, s(:block, s(:call, nil, :puts, s(:arglist, s(:str, "A")))))),
+     s(:defn, :b, s(:args), s(:scope, s(:block, s(:call, nil, :a, s(:arglist))))))
+    "def a\n  puts(\"A\")\nend\ndef b\n  a\nend\n"
 
 == REQUIREMENTS:
 
-+ ParseTree
++ sexp_processor
++ ruby_parser
 
 == INSTALL:
 
@@ -29,7 +52,7 @@ easier in ruby than ever before.
 
 (The MIT License)
 
-Copyright (c) 2006-2007 Ryan Davis
+Copyright (c) Ryan Davis, Seattle.rb
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
