@@ -1,3 +1,10 @@
+=== 1.2.4 / 2009-08-14
+
+* 2 bug fixes:
+
+  * Fixed all doco to use ruby_praser
+  * Fixed bin/r2r_show to use ruby_parser. oops
+
 === 1.2.3 / 2009-06-23
 
 * 4 minor enhancements:
