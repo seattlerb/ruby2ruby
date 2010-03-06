@@ -119,6 +119,52 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_resbody_short_with_begin_end
+    # "begin; blah; rescue; []; end"
+    inn = s(:rescue,
+            s(:call, nil, :blah, s(:arglist)),
+            s(:resbody, s(:array), s(:array)))
+    out = "blah rescue []"
+    util_compare inn, out
+  end
+
+  def test_resbody_short_with_rescue_args
+    inn = s(:rescue,
+            s(:call, nil, :blah, s(:arglist)),
+            s(:resbody, s(:array, s(:const, :A), s(:const, :B)), s(:array)))
+    out = "begin\n  blah\nrescue A, B\n  []\nend"
+    util_compare inn, out
+  end
+
+  def test_call_binary_call_with_hash_arg
+    # if 42
+    #   args << {:key => 24}
+    # end
+
+    inn = s(:if, s(:lit, 42),
+            s(:call, s(:call, nil, :args, s(:arglist)),
+              :<<,
+              s(:arglist, s(:hash, s(:lit, :key), s(:lit, 24)))),
+            nil)
+
+    out = "(args << { :key => 24 }) if 42"
+
+    util_compare inn, out
+  end
+
+  def test_interpolation_and_escapes
+    # log_entry = "  \e[#{message_color}m#{message}\e[0m   "
+    inn = s(:lasgn, :log_entry,
+            s(:dstr, "  \e[",
+              s(:evstr, s(:call, nil, :message_color, s(:arglist))),
+              s(:str, "m"),
+              s(:evstr, s(:call, nil, :message, s(:arglist))),
+              s(:str, "\e[0m   ")))
+    out = "log_entry = \"  \e[#\{message_color}m#\{message}\e[0m   \""
+
+    util_compare inn, out
+  end
+
   def util_compare sexp, expected_ruby, expected_eval = nil
     assert_equal expected_ruby, @processor.process(sexp)
     assert_equal expected_eval, eval(expected_ruby) if expected_eval

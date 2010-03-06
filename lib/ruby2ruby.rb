@@ -7,6 +7,8 @@ class Ruby2Ruby < SexpProcessor
   VERSION = '1.2.4'
   LINE_LENGTH = 78
 
+  BINARY = [:<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>>, :**]
+
   ##
   # Nodes that represent assignment and probably need () around them.
 
@@ -30,6 +32,8 @@ class Ruby2Ruby < SexpProcessor
     self.auto_shift_type = true
     self.strict = true
     self.expected = String
+
+    @calls = []
 
     # self.debug[:defn] = /zsuper/
   end
@@ -172,8 +176,10 @@ class Ruby2Ruby < SexpProcessor
     name = exp.shift
     args = exp.shift rescue nil
 
+    @calls.push name
+
     case name
-    when :<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>>, :** then
+    when *BINARY then
       "(#{receiver} #{name} #{process args})"
     when :[] then
       receiver = "self" if receiver.nil?
@@ -194,6 +200,8 @@ class Ruby2Ruby < SexpProcessor
 
       "#{receiver}#{name}#{args}"
     end
+  ensure
+    @calls.pop
   end
 
   def process_case(exp)
@@ -393,7 +401,12 @@ class Ruby2Ruby < SexpProcessor
     case self.context[1]
     when :arglist, :argscat then
       unless result.empty? then
-        return "#{result.join(', ')}" # HACK - this will break w/ 2 hashes as args
+        # HACK - this will break w/ 2 hashes as args
+        if BINARY.include? @calls.last then
+          return "{ #{result.join(', ')} }"
+        else
+          return "#{result.join(', ')}"
+        end
       else
         return "{}"
       end
@@ -830,11 +843,18 @@ class Ruby2Ruby < SexpProcessor
     exp
   end
 
+  def rewrite_resbody exp
+    raise "no exception list in #{exp.inspect}" unless exp.size > 2 && exp[1]
+    raise exp[1].inspect if exp[1][0] != :array
+    # for now, do nothing, just check and freak if we see an errant structure
+    exp
+  end
+
   def rewrite_rescue exp
     complex = false
     complex ||= exp.size > 3
     complex ||= exp.block
-    complex ||= exp.find_nodes(:resbody).any? { |n| n.array != s(:array) }
+    complex ||= exp.find_nodes(:resbody).any? { |n| n[1] != s(:array) }
     complex ||= exp.find_nodes(:resbody).any? { |n| n.last.nil? }
 
     handled = context.first == :ensure
