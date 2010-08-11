@@ -40,22 +40,54 @@ class TestRuby2Ruby < R2RTestCase
     @processor = Ruby2Ruby.new
   end
 
+  def test_util_dthing_dregx
+    inn = util_thingy(:dregx)
+    inn.shift
+    out = '/a"b#{(1 + 1)}c"d\/e/'
+    exp = /a"b2c"d\/e/
+
+    assert_equal exp, eval(out)
+
+    assert_equal out[1..-2], @processor.util_dthing(:dregx, inn)
+  end
+
+  def test_util_dthing_dstr
+    inn = util_thingy(:dstr)
+    inn.shift
+    out = '"a\"b#{(1 + 1)}c\"d/e"'
+    exp = 'a"b2c"d/e'
+
+    assert_equal exp, eval(out)
+
+    assert_equal out[1..-2], @processor.util_dthing(:dstr, inn)
+  end
+
+  def test_util_dthing_dregx_bug?
+    inn = s(:dregx, '[\/\"]', s(:evstr, s(:lit, 42)))
+    inn.shift
+    out = '/[\/\"]#{42}/'
+    exp =  /[\/\"]42/
+
+    assert_equal out[1..-2], @processor.util_dthing(:dregx, inn)
+    assert_equal exp, eval(out)
+  end
+
   def test_dregx_slash
     inn = util_thingy(:dregx)
-    out = "/blah\\\"blah#\{(1 + 1)}blah\\\"blah\\/blah/"
-    util_compare inn, out, /blah\"blah2blah\"blah\/blah/
+    out = '/a"b#{(1 + 1)}c"d\/e/'
+    util_compare inn, out, /a"b2c"d\/e/
   end
 
   def test_dstr_quote
     inn = util_thingy(:dstr)
-    out = "\"blah\\\"blah#\{(1 + 1)}blah\\\"blah/blah\""
-    util_compare inn, out, "blah\"blah2blah\"blah/blah"
+    out = '"a\"b#{(1 + 1)}c\"d/e"'
+    util_compare inn, out, 'a"b2c"d/e'
   end
 
   def test_dsym_quote
     inn = util_thingy(:dsym)
-    out = ":\"blah\\\"blah#\{(1 + 1)}blah\\\"blah/blah\""
-    util_compare inn, out, :"blah\"blah2blah\"blah/blah"
+    out = ':"a\"b#{(1 + 1)}c\"d/e"'
+    util_compare inn, out, :'a"b2c"d/e'
   end
 
   def test_lit_regexp_slash
@@ -172,9 +204,9 @@ class TestRuby2Ruby < R2RTestCase
 
   def util_thingy(type)
     s(type,
-      'blah"blah',
-      s(:call, s(:lit, 1), :+, s(:arglist, s(:lit, 1))),
-      s(:str, 'blah"blah/blah'))
+      'a"b',
+      s(:evstr, s(:call, s(:lit, 1), :+, s(:arglist, s(:lit, 1)))),
+      s(:str, 'c"d/e'))
   end
 end
 

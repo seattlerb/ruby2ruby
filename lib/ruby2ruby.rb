@@ -320,7 +320,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_dregx(exp)
-    "/" << util_dthing(exp, true) << "/"
+    "/" << util_dthing(:dregx, exp) << "/"
   end
 
   def process_dregx_once(exp)
@@ -328,15 +328,15 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_dstr(exp)
-    "\"#{util_dthing(exp)}\""
+    "\"#{util_dthing(:dstr, exp)}\""
   end
 
   def process_dsym(exp)
-    ":#{process_dstr(exp)}"
+    ":\"#{util_dthing(:dsym, exp)}\""
   end
 
   def process_dxstr(exp)
-    "`#{process_dstr(exp)[1..-2]}`"
+    "`#{util_dthing(:dxstr, exp)}`"
   end
 
   def process_ensure(exp)
@@ -878,27 +878,40 @@ class Ruby2Ruby < SexpProcessor
   ############################################################
   # Utility Methods:
 
-  def util_dthing(exp, regx = false)
-    s = []
-    suck = true
-    x = exp.shift.gsub(/"/, '\"').gsub(/\n/, '\n')
-    x.gsub!(/\//, '\/') if regx
+  def dthing_escape type, lit
+    lit = lit.gsub(/\n/, '\n')
+    case type
+    when :dregx then
+      lit.gsub(/(\A|[^\\])\//, '\1\/')
+    when :dstr, :dsym then
+      lit.gsub(/"/, '\"')
+    when :dxstr then
+      lit.gsub(/`/, '\`')
+    else
+      raise "unsupported type #{type.inspect}"
+    end
+  end
 
-    s << x
+  def util_dthing(type, exp)
+    s = []
+
+    # first item in sexp is a string literal
+    s << dthing_escape(type, exp.shift)
+
     until exp.empty?
       pt = exp.shift
       case pt
       when Sexp then
         case pt.first
         when :str then
-          x = pt.last.gsub(/"/, '\"').gsub(/\n/, '\n')
-          x.gsub!(/\//, '\/') if regx
-          s << x
-        else
+          s << dthing_escape(type, pt.last)
+        when :evstr then
           s << '#{' << process(pt) << '}' # do not use interpolation here
+        else
+          raise "unknown type: #{pt.inspect}"
         end
       else
-        # HACK: raise "huh?: #{pt.inspect}"
+        # HACK: raise "huh?: #{pt.inspect}" -- hitting # constants in regexps
         # do nothing for now
       end
     end
