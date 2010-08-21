@@ -25,6 +25,7 @@ task :stress do
   $: << "../../ruby_parser/dev/lib"
   require "ruby_parser"
   require "ruby2ruby"
+  require "pp"
 
   files = Dir["../../*/dev/**/*.rb"]
 
@@ -32,14 +33,26 @@ task :stress do
   parser    = RubyParser.new
   ruby2ruby = Ruby2Ruby.new
 
+  bad = {}
+
   files.each do |file|
     warn file
     ruby = File.read(file)
 
-    sexp = parser.process(ruby, file)
+    begin
+      sexp = parser.process(ruby, file)
 
-    ruby2ruby.process(sexp)
+      # $stderr.puts sexp.pretty_inspect
+
+      ruby2ruby.process(sexp)
+    rescue Interrupt => e
+      raise e
+    rescue Exception => e
+      bad[file] = e
+    end
   end
+
+  pp bad
 end
 
 # vim: syntax=ruby
