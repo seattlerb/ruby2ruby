@@ -174,29 +174,38 @@ class Ruby2Ruby < SexpProcessor
       Ruby2Ruby::ASSIGN_NODES.include? receiver_node_type
 
     name = exp.shift
-    args = exp.shift rescue nil
+    args = []
+
+    # this allows us to do both old and new sexp forms:
+    exp.push(*exp.pop[1..-1]) if exp.size == 1 && exp.first.first == :arglist
 
     @calls.push name
 
+    in_context :arglist do
+      until exp.empty? do
+        arg = process exp.shift
+        args << arg unless arg.empty?
+      end
+    end
+
     case name
     when *BINARY then
-      "(#{receiver} #{name} #{process args})"
+      "(#{receiver} #{name} #{args.join(', ')})"
     when :[] then
-      receiver = "self" if receiver.nil?
-      "#{receiver}[#{process args}]"
+      receiver ||= "self"
+      "#{receiver}[#{args.join(', ')}]"
     when :[]= then
-      receiver = "self" if receiver.nil?
-      lhs = args.pop
-      "#{receiver}[#{process args}] = #{process lhs}"
+      receiver ||= "self"
+      rhs = args.pop
+      "#{receiver}[#{args.join(', ')}] = #{rhs}"
     when :"-@" then
       "-#{receiver}"
     when :"+@" then
       "+#{receiver}"
     else
-      args     = process args
-      args     = nil            if args.empty?
-      args     = "(#{args})"    if args
-      receiver = "#{receiver}." if receiver
+      args     = nil                    if args.empty?
+      args     = "(#{args.join(', ')})" if args
+      receiver = "#{receiver}."         if receiver
 
       "#{receiver}#{name}#{args}"
     end
@@ -292,7 +301,11 @@ class Ruby2Ruby < SexpProcessor
       name = exp.shift
       args = process(exp.shift)
       args = "" if args == "()"
-      body = indent(process(exp.shift))
+      body = []
+      until exp.empty? do
+        body << indent(process(exp.shift))
+      end
+      body = body.join("\n")
       return "def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
     else
       raise "Unknown defn type: #{type1} for #{exp.inspect}"
