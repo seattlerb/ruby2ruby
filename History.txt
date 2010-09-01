@@ -1,3 +1,17 @@
+=== 1.2.5 / 2010-09-01
+
+* 4 minor enhancements:
+
+  * Added braces to hash args surrounded if in a binary method call.
+  * Added rewrite_resbody to double check structure and freak if necessary.
+  * Added stress task
+  * rewrite_rescue now detects rescue with multiple arguments.
+
+* 2 bug fixes:
+
+  * Fixed dstr/dregex/d* roundtripping problem
+  * Fixed up call arg processing to be more correct and to work with the new sexp form
+
 === 1.2.4 / 2009-08-14
 
 * 2 bug fixes:
