@@ -1,7 +1,7 @@
 = ruby2ruby
 
-* http://seattlerb.rubyforge.org/
-* http://rubyforge.org/projects/seattlerb
+home :: https://github.com/seattlerb/ruby2ruby
+rdoc :: http://seattlerb.rubyforge.org/ruby2ruby
 
 == DESCRIPTION:
 
@@ -52,7 +52,7 @@ processors in ruby easier than ever!
 
 (The MIT License)
 
-Copyright (c) Ryan Davis, Seattle.rb
+Copyright (c) Ryan Davis, seattle.rb
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
