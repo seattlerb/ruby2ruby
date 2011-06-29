@@ -247,7 +247,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_class(exp)
-    "class #{util_module_or_class(exp, true)}"
+    "#{exp.comments}class #{util_module_or_class(exp, true)}"
   end
 
   def process_colon2(exp)
@@ -306,7 +306,7 @@ class Ruby2Ruby < SexpProcessor
         body << indent(process(exp.shift))
       end
       body = body.join("\n")
-      return "def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
+      return "#{exp.comments}def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
     else
       raise "Unknown defn type: #{type1} for #{exp.inspect}"
     end
