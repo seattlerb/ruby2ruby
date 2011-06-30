@@ -6,7 +6,7 @@ Autotest.add_hook :initialize do |at|
   at.order = :random
   at.testlib = "minitest/autorun"
 
-  at.extra_files << "../../ruby_parser/dev/test/pt_testcase.rb"
+  at.extra_files << "../../sexp_processor/dev/lib/pt_testcase.rb"
   at.libs << ":../../sexp_processor/dev/lib:../../ruby_parser/dev/lib"
 
   (1..4).each do |n|
