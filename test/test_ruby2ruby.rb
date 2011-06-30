@@ -197,6 +197,20 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_class_comments
+    inn = s(:class, :Z, nil, s(:scope))
+    inn.comments = "# x\n# y\n"
+    out = "# x\n# y\nclass Z\nend"
+    util_compare inn, out
+  end
+
+  def test_method_comments
+    inn = s(:defn, :z, s(:args), s(:scope, s(:block, s(:nil))))
+    inn.comments = "# x\n# y\n"
+    out = "# x\n# y\ndef z\n  # do nothing\nend"
+    util_compare inn, out
+  end
+
   def util_compare sexp, expected_ruby, expected_eval = nil
     assert_equal expected_ruby, @processor.process(sexp)
     assert_equal expected_eval, eval(expected_ruby) if expected_eval
