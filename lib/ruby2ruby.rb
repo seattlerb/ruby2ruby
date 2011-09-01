@@ -4,7 +4,7 @@ require 'rubygems'
 require 'sexp_processor'
 
 class Ruby2Ruby < SexpProcessor
-  VERSION = '1.2.5'
+  VERSION = '1.3.0'
   LINE_LENGTH = 78
 
   BINARY = [:<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>>, :**]
