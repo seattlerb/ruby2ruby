@@ -124,7 +124,6 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
-
   def test_masgn_splat_wtf
     inn = s(:masgn,
             s(:array, s(:lasgn, :k), s(:lasgn, :v)),
@@ -135,6 +134,13 @@ class TestRuby2Ruby < R2RTestCase
                   :split,
                   s(:arglist, s(:lit, /\=/), s(:lit, 2))))))
     out = 'k, v = *line.split(/\\=/, 2)'
+    util_compare inn, out
+  end
+
+  def test_match3_asgn
+    inn = s(:match3, s(:lit, //), s(:lasgn, :y, s(:call, nil, :x, s(:arglist))))
+    out = "(y = x) =~ //"
+    # "y = x =~ //", which matches on x and assigns to y (not what sexp says).
     util_compare inn, out
   end
 

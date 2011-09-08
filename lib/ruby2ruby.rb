@@ -587,8 +587,14 @@ class Ruby2Ruby < SexpProcessor
 
   def process_match3(exp)
     rhs = process(exp.shift)
+    left_type = exp.first.sexp_type
     lhs = process(exp.shift)
-    "#{lhs} =~ #{rhs}"
+
+    if ASSIGN_NODES.include? left_type then
+      "(#{lhs}) =~ #{rhs}"
+    else
+      "#{lhs} =~ #{rhs}"
+    end
   end
 
   def process_module(exp)
