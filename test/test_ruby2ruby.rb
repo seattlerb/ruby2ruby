@@ -188,6 +188,19 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_resbody_block
+    inn = s(:rescue,
+            s(:call, nil, :x1, s(:arglist)),
+            s(:resbody,
+              s(:array),
+              s(:block,
+                s(:call, nil, :x2, s(:arglist)),
+                s(:call, nil, :x3, s(:arglist)))))
+
+    out = "begin\n  x1\nrescue\n  x2\n  x3\nend"
+    util_compare inn, out
+  end
+
   def test_resbody_short_with_begin_end
     # "begin; blah; rescue; []; end"
     inn = s(:rescue,

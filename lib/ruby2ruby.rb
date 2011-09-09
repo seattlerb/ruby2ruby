@@ -679,7 +679,7 @@ class Ruby2Ruby < SexpProcessor
     els  = process(exp.pop)   unless exp.last.first  == :resbody
 
     body ||= "# do nothing"
-    simple = exp.size == 1
+    simple = exp.size == 1 && !exp.resbody.block
 
     resbodies = []
     until exp.empty? do
@@ -864,7 +864,7 @@ class Ruby2Ruby < SexpProcessor
   def rewrite_rescue exp
     complex = false
     complex ||= exp.size > 3
-    complex ||= exp.block
+    complex ||= exp.resbody.block
     complex ||= exp.find_nodes(:resbody).any? { |n| n[1] != s(:array) }
     complex ||= exp.find_nodes(:resbody).any? { |n| n.last.nil? }
 
