@@ -11,6 +11,8 @@ class Ruby2Ruby < SexpProcessor
 
   ##
   # Nodes that represent assignment and probably need () around them.
+  #
+  # TODO: this should be replaced with full precedence support :/
 
   ASSIGN_NODES = [
                   :dasgn,
@@ -24,6 +26,7 @@ class Ruby2Ruby < SexpProcessor
                   :op_asgn_and,
                   :op_asgn_or,
                   :return,
+                  :if, # HACK
                  ]
 
   def initialize
@@ -185,11 +188,18 @@ class Ruby2Ruby < SexpProcessor
       until exp.empty? do
         arg_type = exp.first.sexp_type
         arg = process exp.shift
-        arg = arg[2..-3] if
-          arg_type == :hash and
-          not BINARY.include? name and
-          (exp.empty? or exp.first.sexp_type == :splat)
-        args << arg unless arg.empty?
+
+        next if arg.empty?
+
+        strip_hash = (arg_type == :hash and
+                      not BINARY.include? name and
+                      (exp.empty? or exp.first.sexp_type == :splat))
+        wrap_arg = Ruby2Ruby::ASSIGN_NODES.include? arg_type
+
+        arg = arg[2..-3] if strip_hash
+        arg = "(#{arg})" if wrap_arg
+
+        args << arg
       end
     end
 

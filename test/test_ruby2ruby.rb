@@ -134,6 +134,20 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_call_arglist_if
+    inn = s(:call,
+            s(:call, nil, :a, s(:arglist)),
+            :+,
+            s(:arglist,
+              s(:if,
+                s(:call, nil, :b, s(:arglist)),
+                s(:call, nil, :c, s(:arglist)),
+                s(:call, nil, :d, s(:arglist)))))
+
+    out = "(a + (b ? (c) : (d)))"
+    util_compare inn, out
+  end
+
   def test_masgn_wtf
     inn = s(:block,
             s(:masgn,
