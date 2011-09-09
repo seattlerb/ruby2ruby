@@ -183,7 +183,12 @@ class Ruby2Ruby < SexpProcessor
 
     in_context :arglist do
       until exp.empty? do
+        arg_type = exp.first.sexp_type
         arg = process exp.shift
+        arg = arg[2..-3] if
+          arg_type == :hash and
+          not BINARY.include? name and
+          (exp.empty? or exp.first.sexp_type == :splat)
         args << arg unless arg.empty?
       end
     end
@@ -401,6 +406,7 @@ class Ruby2Ruby < SexpProcessor
 
   def process_hash(exp)
     result = []
+
     until exp.empty?
       lhs = process(exp.shift)
       rhs = exp.shift
@@ -411,21 +417,7 @@ class Ruby2Ruby < SexpProcessor
       result << "#{lhs} => #{rhs}"
     end
 
-    case self.context[1]
-    when :arglist, :argscat then
-      unless result.empty? then
-        # HACK - this will break w/ 2 hashes as args
-        if BINARY.include? @calls.last then
-          return "{ #{result.join(', ')} }"
-        else
-          return "#{result.join(', ')}"
-        end
-      else
-        return "{}"
-      end
-    else
-      return "{ #{result.join(', ')} }"
-    end
+    return "{ #{result.join(', ')} }"
   end
 
   def process_iasgn(exp)
