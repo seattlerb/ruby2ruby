@@ -453,12 +453,15 @@ class Ruby2Ruby < SexpProcessor
       r << "end"
 
       r
-    else
+    elsif f
       unless expand then
         r = "#{f} unless #{c}"
         return r if (@indent+r).size < LINE_LENGTH and r !~ /\n/
       end
       "unless #{c} then\n#{indent(f)}\nend"
+    else
+      # empty if statement, just do it in case of side effects from condition
+      "if #{c} then\n#{indent '# do nothing'}\nend"
     end
   end
 

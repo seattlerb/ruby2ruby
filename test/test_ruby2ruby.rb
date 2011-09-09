@@ -234,6 +234,12 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_if_empty
+    inn = s(:if, s(:call, nil, :x, s(:arglist)), nil, nil)
+    out = "if x then\n  # do nothing\nend"
+    util_compare inn, out
+  end
+
   def test_interpolation_and_escapes
     # log_entry = "  \e[#{message_color}m#{message}\e[0m   "
     inn = s(:lasgn, :log_entry,
