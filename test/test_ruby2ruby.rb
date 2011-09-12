@@ -72,6 +72,12 @@ class TestRuby2Ruby < R2RTestCase
     assert_equal exp, eval(out)
   end
 
+  def test_and_alias
+    inn = s(:and, s(:true), s(:alias, s(:lit, :a), s(:lit, :b)))
+    out = "true and (alias :a :b)"
+    util_compare inn, out
+  end
+
   def test_dregx_slash
     inn = util_thingy(:dregx)
     out = '/a"b#{(1 + 1)}c"d\/e/'

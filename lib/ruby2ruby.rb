@@ -45,11 +45,11 @@ class Ruby2Ruby < SexpProcessor
   # Processors
 
   def process_alias(exp)
-    "alias #{process(exp.shift)} #{process(exp.shift)}"
+    parenthesize "alias #{process(exp.shift)} #{process(exp.shift)}"
   end
 
   def process_and(exp)
-    "(#{process exp.shift} and #{process exp.shift})"
+    parenthesize "#{process exp.shift} and #{process exp.shift}"
   end
 
   def process_arglist(exp) # custom made node
@@ -141,16 +141,19 @@ class Ruby2Ruby < SexpProcessor
       end
     end
 
-    result = result.join "\n"
-
-    result = case self.context[1]
-             when nil, :scope, :if, :iter, :resbody, :when, :while then
-               result + "\n"
-             else
-               "(#{result})"
-             end
+    result = parenthesize result.join "\n"
+    result += "\n" unless result.start_with? "("
 
     return result
+  end
+
+  def parenthesize exp
+    case self.context[1]
+    when nil, :scope, :if, :iter, :resbody, :when, :while then
+      exp
+    else
+      "(#{exp})"
+    end
   end
 
   def process_block_pass exp
@@ -172,9 +175,7 @@ class Ruby2Ruby < SexpProcessor
   def process_call(exp)
     receiver_node_type = exp.first.nil? ? nil : exp.first.first
     receiver = process exp.shift
-
-    receiver = "(#{receiver})" if
-      Ruby2Ruby::ASSIGN_NODES.include? receiver_node_type
+    receiver = "(#{receiver})" if ASSIGN_NODES.include? receiver_node_type
 
     name = exp.shift
     args = []
