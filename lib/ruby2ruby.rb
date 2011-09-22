@@ -141,7 +141,7 @@ class Ruby2Ruby < SexpProcessor
     code << "begin"
     until exp.empty?
       src = process(exp.shift)
-      src = indent(src) unless src =~ /(^|\n)rescue/ # ensure no level 0 rescues
+      src = indent(src) unless src =~ /(^|\n)(rescue|ensure)/ # ensure no level 0 rescues
       code << src
     end
     code << "end"
@@ -400,8 +400,10 @@ class Ruby2Ruby < SexpProcessor
     ens  = exp.shift
     ens  = nil if ens == s(:nil)
     ens  = process(ens) || "# do nothing"
+    ens = "begin\n#{ens}\nend\n" if ens =~ /(^|\n)rescue/
 
     body.sub!(/\n\s*end\z/, '')
+    body = indent(body) unless body =~ /(^|\n)rescue/
 
     return "#{body}\nensure\n#{indent ens}"
   end
@@ -722,10 +724,12 @@ class Ruby2Ruby < SexpProcessor
     body ||= "# do nothing"
     simple = exp.size == 1 && !exp.resbody.block
 
+
     resbodies = []
     until exp.empty? do
       resbody = exp.shift
-      simple &&= resbody[1] == s(:array) && resbody[2] != nil
+      simple &&= resbody[1] == s(:array)
+      simple &&= resbody[2] != nil && resbody[2].node_type != :block
       resbodies << process(resbody)
     end
 
@@ -908,6 +912,7 @@ class Ruby2Ruby < SexpProcessor
     complex ||= exp.resbody.block
     complex ||= exp.find_nodes(:resbody).any? { |n| n[1] != s(:array) }
     complex ||= exp.find_nodes(:resbody).any? { |n| n.last.nil? }
+    complex ||= exp.find_nodes(:resbody).any? { |n| n[2] and n[2].node_type == :block }
 
     handled = context.first == :ensure
 

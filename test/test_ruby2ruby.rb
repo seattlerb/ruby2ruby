@@ -306,6 +306,47 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_basic_ensure
+    inn = s(:ensure, s(:lit, 1), s(:lit, 2))
+    out = "begin\n  1\nensure\n  2\nend"
+    util_compare inn, out
+  end
+  
+  def test_nested_ensure
+    inn = s(:ensure, s(:lit, 1), s(:ensure, s(:lit, 2), s(:lit, 3)))
+    out = "begin\n  1\nensure\n  begin\n    2\n  ensure\n    3\n  end\nend"
+    util_compare inn, out
+  end
+  
+  def test_nested_rescue
+    inn = s(:ensure, s(:lit, 1), s(:rescue, s(:lit, 2), s(:resbody, s(:array), s(:lit, 3))))
+    out = "begin\n  1\nensure\n  2 rescue 3\nend"
+    util_compare inn, out
+  end
+  
+  def test_nested_rescue_exception
+    inn = s(:ensure, s(:lit, 1), s(:rescue, s(:lit, 2), s(:resbody, s(:array, s(:const, :Exception)), s(:lit, 3))))
+    out = "begin\n  1\nensure\n  begin\n    2\n  rescue Exception\n    3\n  end\nend"
+    util_compare inn, out
+  end
+
+  def test_nested_rescue_exception2
+    inn = s(:ensure, s(:rescue, s(:lit, 2), s(:resbody, s(:array, s(:const, :Exception)), s(:lit, 3))), s(:lit, 1))
+    out = "begin\n  2\nrescue Exception\n  3\nensure\n  1\nend"
+    util_compare inn, out
+  end
+
+  def test_rescue_block
+    inn = s(:rescue,
+            s(:call, nil, :alpha, s(:arglist)),
+            s(:resbody, s(:array), 
+              s(:block,
+                s(:call, nil, :beta, s(:arglist)),
+                s(:call, nil, :gamma, s(:arglist)))))
+    out = "begin\n  alpha\nrescue\n  beta\n  gamma\nend"
+    util_compare inn, out
+  end
+  
   def util_compare sexp, expected_ruby, expected_eval = nil
     assert_equal expected_ruby, @processor.process(sexp)
     assert_equal expected_eval, eval(expected_ruby) if expected_eval
