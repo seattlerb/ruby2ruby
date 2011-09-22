@@ -155,7 +155,7 @@ class Ruby2Ruby < SexpProcessor
     until exp.empty? do
       code = exp.shift
       if code.nil? or code.first == :nil then
-        result << "# do nothing"
+        result << "# do nothing\n"
       else
         result << process(code)
       end
