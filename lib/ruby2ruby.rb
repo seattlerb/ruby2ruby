@@ -3,6 +3,26 @@
 require 'rubygems'
 require 'sexp_processor'
 
+# REFACTOR: stolen from ruby_parser
+class Regexp
+  unless defined? ENC_NONE then
+    ENC_NONE = /x/n.options
+    ENC_EUC  = /x/e.options
+    ENC_SJIS = /x/s.options
+    ENC_UTF8 = /x/u.options
+
+    CODES = {
+      EXTENDED   => 'x',
+      IGNORECASE => 'i',
+      MULTILINE  => 'm',
+      ENC_NONE   => 'n',
+      ENC_EUC    => 'e',
+      ENC_SJIS   => 's',
+      ENC_UTF8   => 'u',
+    }
+  end
+end
+
 class Ruby2Ruby < SexpProcessor
   VERSION = '1.3.0'
   LINE_LENGTH = 78
@@ -348,8 +368,15 @@ class Ruby2Ruby < SexpProcessor
     "(#{process exp.shift}...#{process exp.shift})"
   end
 
+  def re_opt options
+    bits = (0..8).map { |n| options[n] * 2**n }
+    bits.delete 0
+    bits.map { |n| Regexp::CODES[n] }.join
+  end
+
   def process_dregx(exp)
-    "/" << util_dthing(:dregx, exp) << "/"
+    options = re_opt exp.pop if Fixnum === exp.last
+    "/" << util_dthing(:dregx, exp) << "/#{options}"
   end
 
   def process_dregx_once(exp)
@@ -936,8 +963,7 @@ class Ruby2Ruby < SexpProcessor
           raise "unknown type: #{pt.inspect}"
         end
       else
-        # HACK: raise "huh?: #{pt.inspect}" -- hitting # constants in regexps
-        # do nothing for now
+        raise "unhandled value in d-thing: #{pt.inspect}"
       end
     end
 

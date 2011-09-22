@@ -230,6 +230,18 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_regexp_options
+    inn = s(:match3,
+            s(:dregx,
+              "abc",
+              s(:evstr, s(:call, nil, :x, s(:arglist))),
+              s(:str, "def"),
+              4),
+            s(:str, "a"))
+    out = '"a" =~ /abc#{x}def/m'
+    util_compare inn, out
+  end
+
   def test_resbody_short_with_rescue_args
     inn = s(:rescue,
             s(:call, nil, :blah, s(:arglist)),
