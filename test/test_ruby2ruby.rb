@@ -111,31 +111,31 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_call_arglist_hash_first
     inn = s(:call, nil, :method,
-      s(:arglist,
-        s(:hash, s(:lit, :a), s(:lit, 1)),
-        s(:call, nil, :b, s(:arglist))))
+            s(:arglist,
+              s(:hash, s(:lit, :a), s(:lit, 1)),
+              s(:call, nil, :b, s(:arglist))))
     out = "method({ :a => 1 }, b)"
 
     util_compare inn, out
   end
 
-  def test_call_arglist_hash_last
+  def test_call_arglist_hash_first_last
     inn = s(:call, nil, :method,
-      s(:arglist,
-        s(:call, nil, :b, s(:arglist)),
-        s(:hash, s(:lit, :a), s(:lit, 1))))
-    out = "method(b, :a => 1)"
+            s(:arglist,
+              s(:hash, s(:lit, :a), s(:lit, 1)),
+              s(:call, nil, :b, s(:arglist)),
+              s(:hash, s(:lit, :c), s(:lit, 1))))
+    out = "method({ :a => 1 }, b, :c => 1)"
 
     util_compare inn, out
   end
 
   def test_call_arglist_hash_last
     inn = s(:call, nil, :method,
-      s(:arglist,
-        s(:hash, s(:lit, :a), s(:lit, 1)),
-        s(:call, nil, :b, s(:arglist)),
-        s(:hash, s(:lit, :c), s(:lit, 1))))
-    out = "method({ :a => 1 }, b, :c => 1)"
+            s(:arglist,
+              s(:call, nil, :b, s(:arglist)),
+              s(:hash, s(:lit, :a), s(:lit, 1))))
+    out = "method(b, :a => 1)"
 
     util_compare inn, out
   end
