@@ -1,3 +1,22 @@
+=== 1.3.1 / 2011-09-22
+
+* 1 minor enhancement:
+
+  * Added parenthesize to add parens in certain contexts.
+
+* 10 bug fixes:
+
+  * Add newline to 'do nothing' comment in a block... seems contrived. (andreacampi)
+  * Binary operations not work properly with some complex statements. (smorss)
+  * Fixed if statements with no body (smorss)
+  * Fixed logic for call with hash args in various locations (smorss)
+  * Fixed match3 on an assignment. (smorss)
+  * Fixed multiple nested rescue/ensure exprs (larsch)
+  * Fixed process_alias to parenthesize (smorss)
+  * Fixed process_and to parenthenize only when it makes sense.
+  * Fixed rescue with 2+ statements in resbody (smorss)
+  * Regexps with options other than /o were not showing flags. (smorss)
+
 === 1.3.0 / 2011-09-01
 
 * 1 minor enhancement:
