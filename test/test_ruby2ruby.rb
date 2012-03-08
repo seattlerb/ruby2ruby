@@ -18,6 +18,8 @@ class R2RTestCase < ParseTreeTestCase
   def self.generate_test klass, node, data, input_name, output_name
     output_name = data.has_key?('Ruby2Ruby') ? 'Ruby2Ruby' : 'Ruby'
 
+    return if node.to_s =~ /19$/
+
     klass.class_eval <<-EOM
       def test_#{node}
         pt = #{data[input_name].inspect}
