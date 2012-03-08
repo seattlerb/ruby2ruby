@@ -208,12 +208,14 @@ class Ruby2Ruby < SexpProcessor
     in_context :arglist do
       until exp.empty? do
         arg_type = exp.first.sexp_type
+        is_empty_hash = (exp.first == s(:hash))
         arg = process exp.shift
 
         next if arg.empty?
 
         strip_hash = (arg_type == :hash and
                       not BINARY.include? name and
+                      not is_empty_hash and
                       (exp.empty? or exp.first.sexp_type == :splat))
         wrap_arg = Ruby2Ruby::ASSIGN_NODES.include? arg_type
 

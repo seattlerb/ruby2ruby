@@ -346,6 +346,12 @@ class TestRuby2Ruby < R2RTestCase
     out = "begin\n  alpha\nrescue\n  beta\n  gamma\nend"
     util_compare inn, out
   end
+
+  def test_call_empty_hash
+    inn = s(:call, nil, :foo, s(:arglist, s(:hash)))
+    out = "foo({  })"
+    util_compare inn, out
+  end
   
   def util_compare sexp, expected_ruby, expected_eval = nil
     assert_equal expected_ruby, @processor.process(sexp)
