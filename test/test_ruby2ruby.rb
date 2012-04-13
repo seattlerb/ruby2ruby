@@ -383,7 +383,7 @@ def silent_eval ruby
 end
 
 def morph_and_eval src, from, to, processor
-  new_src = processor.new.process(RubyParser.new.process(src.sub(from, to)))
+  new_src = processor.new.process(Ruby18Parser.new.process(src.sub(from, to)))
   silent_eval new_src
   new_src
 end
