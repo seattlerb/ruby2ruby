@@ -18,7 +18,6 @@ Hoe.spec 'ruby2ruby' do
 
   dependency "sexp_processor", "~> 3.0"
   dependency "ruby_parser",    "~> 2.0"
-  dependency "ParseTree",      "~> 3.0", :developer
 end
 
 task :stress do
