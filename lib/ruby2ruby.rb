@@ -121,8 +121,8 @@ class Ruby2Ruby < SexpProcessor
 
     case name
     when :[]= then
-      rhs = process args.pop
-      "#{receiver}[#{process(args)}] = #{rhs}"
+      rhs = exp.empty? ? nil : exp.shift
+      "#{receiver}[#{process args}] = #{process rhs}"
     else
       name = name.to_s.sub(/=$/, '')
       if args && args != s(:arglist) then
@@ -169,7 +169,7 @@ class Ruby2Ruby < SexpProcessor
 
   def parenthesize exp
     case self.context[1]
-    when nil, :scope, :if, :iter, :resbody, :when, :while then
+    when nil, :defn, :defs, :class, :sclass, :if, :iter, :resbody, :when, :while then
       exp
     else
       "(#{exp})"
@@ -332,20 +332,23 @@ class Ruby2Ruby < SexpProcessor
       end
     end
 
-    case type1
-    when :scope, :args then
-      name = exp.shift
-      args = process(exp.shift)
-      args = "" if args == "()"
-      body = []
-      until exp.empty? do
-        body << indent(process(exp.shift))
-      end
-      body = body.join("\n")
-      return "#{exp.comments}def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
-    else
-      raise "Unknown defn type: #{type1} for #{exp.inspect}"
+    comm = exp.comments
+    name = exp.shift
+    args = process(exp.shift)
+    args = "" if args == "()"
+
+    exp.shift if exp == s(s(:nil)) # empty it out of a default nil expression
+
+    body = []
+    until exp.empty? do
+      body << indent(process(exp.shift))
     end
+
+    body << indent("# do nothing") if body.empty?
+
+    body = body.join("\n")
+
+    return "#{comm}def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
   end
 
   def process_defs(exp)
@@ -761,10 +764,6 @@ class Ruby2Ruby < SexpProcessor
     "class << #{process(exp.shift)}\n#{indent(process(exp.shift))}\nend"
   end
 
-  def process_scope(exp)
-    exp.empty? ? "" : process(exp.shift)
-  end
-
   def process_self(exp)
     "self"
   end
@@ -992,7 +991,7 @@ class Ruby2Ruby < SexpProcessor
 
     body = []
     begin
-      code = process(exp.shift)
+      code = process(exp.shift) unless exp.empty?
       body << code.chomp unless code.nil? or code.chomp.empty?
     end until exp.empty?
 

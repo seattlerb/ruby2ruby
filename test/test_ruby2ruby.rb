@@ -103,19 +103,18 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_call_self_index
-    util_compare s(:call, nil, :[], s(:arglist, s(:lit, 42))), "self[42]"
+    util_compare s(:call, nil, :[], s(:lit, 42)), "self[42]"
   end
 
   def test_call_self_index_equals
-    util_compare(s(:call, nil, :[]=, s(:arglist, s(:lit, 42), s(:lit, 24))),
+    util_compare(s(:call, nil, :[]=, s(:lit, 42), s(:lit, 24)),
                  "self[42] = 24")
   end
 
   def test_call_arglist_hash_first
     inn = s(:call, nil, :method,
-            s(:arglist,
-              s(:hash, s(:lit, :a), s(:lit, 1)),
-              s(:call, nil, :b, s(:arglist))))
+            s(:hash, s(:lit, :a), s(:lit, 1)),
+            s(:call, nil, :b))
     out = "method({ :a => 1 }, b)"
 
     util_compare inn, out
@@ -123,10 +122,9 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_call_arglist_hash_first_last
     inn = s(:call, nil, :method,
-            s(:arglist,
-              s(:hash, s(:lit, :a), s(:lit, 1)),
-              s(:call, nil, :b, s(:arglist)),
-              s(:hash, s(:lit, :c), s(:lit, 1))))
+            s(:hash, s(:lit, :a), s(:lit, 1)),
+            s(:call, nil, :b),
+            s(:hash, s(:lit, :c), s(:lit, 1)))
     out = "method({ :a => 1 }, b, :c => 1)"
 
     util_compare inn, out
@@ -134,9 +132,8 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_call_arglist_hash_last
     inn = s(:call, nil, :method,
-            s(:arglist,
-              s(:call, nil, :b, s(:arglist)),
-              s(:hash, s(:lit, :a), s(:lit, 1))))
+            s(:call, nil, :b),
+            s(:hash, s(:lit, :a), s(:lit, 1)))
     out = "method(b, :a => 1)"
 
     util_compare inn, out
@@ -144,13 +141,12 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_call_arglist_if
     inn = s(:call,
-            s(:call, nil, :a, s(:arglist)),
+            s(:call, nil, :a),
             :+,
-            s(:arglist,
-              s(:if,
-                s(:call, nil, :b, s(:arglist)),
-                s(:call, nil, :c, s(:arglist)),
-                s(:call, nil, :d, s(:arglist)))))
+            s(:if,
+              s(:call, nil, :b),
+              s(:call, nil, :c),
+              s(:call, nil, :d)))
 
     out = "(a + (b ? (c) : (d)))"
     util_compare inn, out
@@ -163,14 +159,14 @@ class TestRuby2Ruby < R2RTestCase
               s(:array,
                 s(:splat,
                   s(:call,
-                    s(:call, nil, :line, s(:arglist)),
+                    s(:call, nil, :line),
                     :split,
-                    s(:arglist, s(:lit, /\=/), s(:lit, 2)))))),
+                    s(:lit, /\=/), s(:lit, 2))))),
             s(:attrasgn,
               s(:self),
               :[]=,
-              s(:arglist, s(:lvar, :k),
-                s(:call, s(:lvar, :v), :strip, s(:arglist)))))
+              s(:arglist, s(:lvar, :k)),
+              s(:call, s(:lvar, :v), :strip)))
 
     out = "k, v = *line.split(/\\=/, 2)\nself[k] = v.strip\n"
 
@@ -183,15 +179,15 @@ class TestRuby2Ruby < R2RTestCase
             s(:array,
               s(:splat,
                 s(:call,
-                  s(:call, nil, :line, s(:arglist)),
+                  s(:call, nil, :line),
                   :split,
-                  s(:arglist, s(:lit, /\=/), s(:lit, 2))))))
+                  s(:lit, /\=/), s(:lit, 2)))))
     out = 'k, v = *line.split(/\\=/, 2)'
     util_compare inn, out
   end
 
   def test_match3_asgn
-    inn = s(:match3, s(:lit, //), s(:lasgn, :y, s(:call, nil, :x, s(:arglist))))
+    inn = s(:match3, s(:lit, //), s(:lasgn, :y, s(:call, nil, :x)))
     out = "(y = x) =~ //"
     # "y = x =~ //", which matches on x and assigns to y (not what sexp says).
     util_compare inn, out
@@ -199,12 +195,11 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_splat_call
     inn = s(:call, nil, :x,
-            s(:arglist,
-              s(:splat,
-                s(:call,
-                  s(:call, nil, :line, s(:arglist)),
-                  :split,
-                  s(:arglist, s(:lit, /\=/), s(:lit, 2))))))
+            s(:splat,
+              s(:call,
+                s(:call, nil, :line),
+                :split,
+                s(:lit, /\=/), s(:lit, 2))))
 
     out = 'x(*line.split(/\=/, 2))'
     util_compare inn, out
@@ -212,12 +207,12 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_resbody_block
     inn = s(:rescue,
-            s(:call, nil, :x1, s(:arglist)),
+            s(:call, nil, :x1),
             s(:resbody,
               s(:array),
               s(:block,
-                s(:call, nil, :x2, s(:arglist)),
-                s(:call, nil, :x3, s(:arglist)))))
+                s(:call, nil, :x2),
+                s(:call, nil, :x3))))
 
     out = "begin\n  x1\nrescue\n  x2\n  x3\nend"
     util_compare inn, out
@@ -226,7 +221,7 @@ class TestRuby2Ruby < R2RTestCase
   def test_resbody_short_with_begin_end
     # "begin; blah; rescue; []; end"
     inn = s(:rescue,
-            s(:call, nil, :blah, s(:arglist)),
+            s(:call, nil, :blah),
             s(:resbody, s(:array), s(:array)))
     out = "blah rescue []"
     util_compare inn, out
@@ -236,7 +231,7 @@ class TestRuby2Ruby < R2RTestCase
     inn = s(:match3,
             s(:dregx,
               "abc",
-              s(:evstr, s(:call, nil, :x, s(:arglist))),
+              s(:evstr, s(:call, nil, :x)),
               s(:str, "def"),
               4),
             s(:str, "a"))
@@ -246,7 +241,7 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_resbody_short_with_rescue_args
     inn = s(:rescue,
-            s(:call, nil, :blah, s(:arglist)),
+            s(:call, nil, :blah),
             s(:resbody, s(:array, s(:const, :A), s(:const, :B)), s(:array)))
     out = "begin\n  blah\nrescue A, B\n  []\nend"
     util_compare inn, out
@@ -258,9 +253,9 @@ class TestRuby2Ruby < R2RTestCase
     # end
 
     inn = s(:if, s(:lit, 42),
-            s(:call, s(:call, nil, :args, s(:arglist)),
+            s(:call, s(:call, nil, :args),
               :<<,
-              s(:arglist, s(:hash, s(:lit, :key), s(:lit, 24)))),
+              s(:hash, s(:lit, :key), s(:lit, 24))),
             nil)
 
     out = "(args << { :key => 24 }) if 42"
@@ -269,7 +264,7 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_if_empty
-    inn = s(:if, s(:call, nil, :x, s(:arglist)), nil, nil)
+    inn = s(:if, s(:call, nil, :x), nil, nil)
     out = "if x then\n  # do nothing\nend"
     util_compare inn, out
   end
@@ -278,9 +273,9 @@ class TestRuby2Ruby < R2RTestCase
     # log_entry = "  \e[#{message_color}m#{message}\e[0m   "
     inn = s(:lasgn, :log_entry,
             s(:dstr, "  \e[",
-              s(:evstr, s(:call, nil, :message_color, s(:arglist))),
+              s(:evstr, s(:call, nil, :message_color)),
               s(:str, "m"),
-              s(:evstr, s(:call, nil, :message, s(:arglist))),
+              s(:evstr, s(:call, nil, :message)),
               s(:str, "\e[0m   ")))
     out = "log_entry = \"  \e[#\{message_color}m#\{message}\e[0m   \""
 
@@ -288,21 +283,21 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_class_comments
-    inn = s(:class, :Z, nil, s(:scope))
+    inn = s(:class, :Z, nil)
     inn.comments = "# x\n# y\n"
     out = "# x\n# y\nclass Z\nend"
     util_compare inn, out
   end
 
   def test_module_comments
-    inn = s(:module, :Z, s(:scope))
+    inn = s(:module, :Z)
     inn.comments = "# x\n# y\n"
     out = "# x\n# y\nmodule Z\nend"
     util_compare inn, out
   end
 
   def test_method_comments
-    inn = s(:defn, :z, s(:args), s(:scope, s(:block, s(:nil))))
+    inn = s(:defn, :z, s(:args), s(:nil))
     inn.comments = "# x\n# y\n"
     out = "# x\n# y\ndef z\n  # do nothing\nend"
     util_compare inn, out
@@ -340,11 +335,11 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_rescue_block
     inn = s(:rescue,
-            s(:call, nil, :alpha, s(:arglist)),
+            s(:call, nil, :alpha),
             s(:resbody, s(:array),
               s(:block,
-                s(:call, nil, :beta, s(:arglist)),
-                s(:call, nil, :gamma, s(:arglist)))))
+                s(:call, nil, :beta),
+                s(:call, nil, :gamma))))
     out = "begin\n  alpha\nrescue\n  beta\n  gamma\nend"
     util_compare inn, out
   end
@@ -357,7 +352,7 @@ class TestRuby2Ruby < R2RTestCase
   def util_thingy(type)
     s(type,
       'a"b',
-      s(:evstr, s(:call, s(:lit, 1), :+, s(:arglist, s(:lit, 1)))),
+      s(:evstr, s(:call, s(:lit, 1), :+, s(:lit, 1))),
       s(:str, 'c"d/e'))
   end
 end
@@ -384,6 +379,7 @@ end
 
 def morph_and_eval src, from, to, processor
   new_src = processor.new.process(Ruby18Parser.new.process(src.sub(from, to)))
+
   silent_eval new_src
   new_src
 end
