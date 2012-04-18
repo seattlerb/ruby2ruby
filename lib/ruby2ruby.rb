@@ -462,7 +462,7 @@ class Ruby2Ruby < SexpProcessor
       result << "#{lhs} => #{rhs}"
     end
 
-    return "{ #{result.join(', ')} }"
+    return result.empty? ? "{}" : "{ #{result.join(', ')} }"
   end
 
   def process_iasgn(exp)

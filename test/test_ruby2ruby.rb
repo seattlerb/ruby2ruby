@@ -263,6 +263,12 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_call_empty_hash
+    inn = s(:call, nil, :foo, s(:arglist, s(:hash)))
+    out = "foo({})"
+    util_compare inn, out
+  end
+
   def test_if_empty
     inn = s(:if, s(:call, nil, :x), nil, nil)
     out = "if x then\n  # do nothing\nend"
@@ -341,12 +347,6 @@ class TestRuby2Ruby < R2RTestCase
                 s(:call, nil, :beta),
                 s(:call, nil, :gamma))))
     out = "begin\n  alpha\nrescue\n  beta\n  gamma\nend"
-    util_compare inn, out
-  end
-
-  def test_call_empty_hash
-    inn = s(:call, nil, :foo, s(:arglist, s(:hash)))
-    out = "foo({  })"
     util_compare inn, out
   end
 
