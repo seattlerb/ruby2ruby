@@ -2,7 +2,6 @@
 
 require 'rubygems'
 require 'hoe'
-require 'isolate/rake'
 
 Hoe.add_include_dirs("lib",
                      "../../ruby_parser/dev/lib",
