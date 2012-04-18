@@ -48,6 +48,18 @@ processors in ruby easier than ever!
 
 + sudo gem install ruby2ruby
 
+== How to Contribute:
+
+To get started all you need is a checkout, rake, and hoe. The easiest
+way is:
+
+    % git clone seattlerb/ruby2ruby # assumes you use the `hub` wrapper.
+    % gem i rake hoe
+    % rake install_plugins # installs hoe-seattlerb & isolate
+    % rake install_plugins # installs minitest (referenced from hoe-seattlerb)
+
+From here you should be good to go. We accept pull requests on github.
+
 == LICENSE:
 
 (The MIT License)
