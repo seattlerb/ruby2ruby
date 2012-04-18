@@ -344,6 +344,12 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_call_empty_hash
+    inn = s(:call, nil, :foo, s(:arglist, s(:hash)))
+    out = "foo({  })"
+    util_compare inn, out
+  end
+
   def util_compare sexp, expected_ruby, expected_eval = nil
     assert_equal expected_ruby, @processor.process(sexp)
     assert_equal expected_eval, eval(expected_ruby) if expected_eval
