@@ -711,7 +711,8 @@ class Ruby2Ruby < SexpProcessor
 
   def process_resbody exp
     args = exp.shift
-    body = process(exp.shift) || "# do nothing"
+    body = finish(exp)
+    body << "# do nothing" if body.empty?
 
     name =   args.lasgn true
     name ||= args.iasgn true
@@ -719,7 +720,7 @@ class Ruby2Ruby < SexpProcessor
     args = " #{args}" unless args.empty?
     args += " => #{name[1]}" if name
 
-    "rescue#{args}\n#{indent body}"
+    "rescue#{args}\n#{indent body.join("\n")}"
   end
 
   def process_rescue exp
@@ -783,10 +784,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_super(exp)
-    args = []
-    until exp.empty? do
-      args << process(exp.shift)
-    end
+    args = finish exp
 
     "super(#{args.join(', ')})"
   end
@@ -935,6 +933,14 @@ class Ruby2Ruby < SexpProcessor
 
   ############################################################
   # Utility Methods:
+
+  def finish exp # REFACTOR: work this out of the rest of the processors
+    body = []
+    until exp.empty? do
+      body << process(exp.shift)
+    end
+    body.compact
+  end
 
   def dthing_escape type, lit
     lit = lit.gsub(/\n/, '\n')
