@@ -828,7 +828,7 @@ class Ruby2Ruby < SexpProcessor
 
     until exp.empty?
       cond = process(exp.shift).to_s[1..-2]
-      code = indent(process(exp.shift))
+      code = indent(finish(exp).join("\n"))
       code = indent "# do nothing" if code =~ /\A\s*\Z/
       src << "when #{cond} then\n#{code.chomp}"
     end
