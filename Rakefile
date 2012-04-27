@@ -19,31 +19,38 @@ Hoe.spec 'ruby2ruby' do
   dependency "ruby_parser",    "~> 2.0"
 end
 
+def process ruby, file="stdin"
+  require "ruby_parser"
+  require "ruby2ruby"
+
+  parser    = RubyParser.new
+  ruby2ruby = Ruby2Ruby.new
+
+  begin
+    sexp = parser.process(ruby, file)
+
+    ruby2ruby.process(sexp)
+  rescue Interrupt => e
+    raise e
+  end
+end
+
 task :stress do
   $: << "lib"
   $: << "../../ruby_parser/dev/lib"
-  require "ruby_parser"
-  require "ruby2ruby"
   require "pp"
 
   files = Dir["../../*/dev/**/*.rb"]
 
   warn "Stress testing against #{files.size} files"
-  parser    = RubyParser.new
-  ruby2ruby = Ruby2Ruby.new
 
   bad = {}
 
   files.each do |file|
     warn file
-    ruby = File.read(file)
 
     begin
-      sexp = parser.process(ruby, file)
-
-      # $stderr.puts sexp.pretty_inspect
-
-      ruby2ruby.process(sexp)
+      process File.read(file), file
     rescue Interrupt => e
       raise e
     rescue Exception => e
@@ -52,6 +59,30 @@ task :stress do
   end
 
   pp bad
+end
+
+task :debug => :isolate do
+  ENV["V"] ||= "18"
+
+  $: << "lib"
+  require 'ruby_parser'
+
+  parser = if ENV["V"] == "18" then
+             Ruby18Parser.new
+           else
+             Ruby19Parser.new
+           end
+
+  file = ENV["F"] || ENV["FILE"]
+
+  ruby = if file then
+           File.read(file)
+         else
+           file = "env"
+           ENV["R"] || ENV["RUBY"]
+         end
+
+  puts process(ruby, file)
 end
 
 # vim: syntax=ruby
