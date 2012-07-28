@@ -1,3 +1,26 @@
+=== 2.0.0.b1 / 2012-07-27
+
+* 4 major enhancements:
+
+  * Made it work without arglist in call.
+  * Made it work without scope/block in class/module/defn/defs.
+  * Removed block from resbody
+  * Removed block from when node
+
+* 4 minor enhancements:
+
+  * Added debug task to help isolate an error
+  * Empty hash is now a proper {}
+  * Refactored and added finish method.
+  * Switched to new Ruby18Parser to avoid deprecation warnings
+
+* 4 bug fixes:
+
+  * Fixed call with empty hash arg. (neilconway)
+  * OMG WTF... removed long decrepit ParseTree dependency
+  * Removed isolate/rake require to reduce minimum bootstrap to hoe + rake + rake install_plugins (*2)
+  * Skip 1.9 tests for now.
+
 === 1.3.1 / 2011-09-22
 
 * 1 minor enhancement:
