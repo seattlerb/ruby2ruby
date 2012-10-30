@@ -390,27 +390,29 @@ def morph_and_eval src, from, to, processor
   new_src
 end
 
-____ = morph_and_eval tr2r, /TestRuby2Ruby/, 'TestRuby2Ruby2', Ruby2Ruby
-ruby = morph_and_eval ir2r, /Ruby2Ruby/,     'Ruby2Ruby2',     Ruby2Ruby
-____ = morph_and_eval ruby, /Ruby2Ruby2/,    'Ruby2Ruby3',     Ruby2Ruby2
+unless ENV["SIMPLE"] then
+  ____ = morph_and_eval tr2r, /TestRuby2Ruby/, 'TestRuby2Ruby2', Ruby2Ruby
+  ruby = morph_and_eval ir2r, /Ruby2Ruby/,     'Ruby2Ruby2',     Ruby2Ruby
+  ____ = morph_and_eval ruby, /Ruby2Ruby2/,    'Ruby2Ruby3',     Ruby2Ruby2
 
-class TestRuby2Ruby1 < TestRuby2Ruby
-  def setup
-    super
-    @processor = Ruby2Ruby2.new
+  class TestRuby2Ruby1 < TestRuby2Ruby
+    def setup
+      super
+      @processor = Ruby2Ruby2.new
+    end
   end
-end
 
-class TestRuby2Ruby3 < TestRuby2Ruby2
-  def setup
-    super
-    @processor = Ruby2Ruby2.new
+  class TestRuby2Ruby3 < TestRuby2Ruby2
+    def setup
+      super
+      @processor = Ruby2Ruby2.new
+    end
   end
-end
 
-class TestRuby2Ruby4 < TestRuby2Ruby2
-  def setup
-    super
-    @processor = Ruby2Ruby3.new
+  class TestRuby2Ruby4 < TestRuby2Ruby2
+    def setup
+      super
+      @processor = Ruby2Ruby3.new
+    end
   end
 end
