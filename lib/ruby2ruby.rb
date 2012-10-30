@@ -90,6 +90,8 @@ class Ruby2Ruby < SexpProcessor
         args << arg
       when Array then
         case arg.first
+        when :lasgn then
+          args << process(arg)
         when :block then
           asgns = {}
           arg[1..-1].each do |lasgn|
@@ -513,8 +515,15 @@ class Ruby2Ruby < SexpProcessor
   def process_iter(exp)
     iter = process exp.shift
     args = exp.shift
-    args = (args == 0) ? '' : process(args)
     body = exp.empty? ? nil : process(exp.shift)
+
+    args = case args
+           when 0 then
+             " ||"
+           else
+             a = process(args)[1..-2]
+             a.empty? ? "" : " |#{a}|"
+           end
 
     b, e = if iter == "END" then
              [ "{", "}" ]
@@ -527,7 +536,7 @@ class Ruby2Ruby < SexpProcessor
     # REFACTOR: ugh
     result = []
     result << "#{iter} {"
-    result << " |#{args}|" if args
+    result << args
     if body then
       result << " #{body.strip} "
     else
@@ -539,7 +548,7 @@ class Ruby2Ruby < SexpProcessor
 
     result = []
     result << "#{iter} #{b}"
-    result << " |#{args}|" if args
+    result << args
     result << "\n"
     if body then
       result << indent(body.strip)
