@@ -88,19 +88,10 @@ class Ruby2Ruby < SexpProcessor
       case arg
       when Symbol then
         args << arg
-      when Array then
+      when Sexp then
         case arg.first
         when :lasgn then
           args << process(arg)
-        when :block then
-          asgns = {}
-          arg[1..-1].each do |lasgn|
-            asgns[lasgn[1]] = process(lasgn)
-          end
-
-          args.each_with_index do |name, index|
-            args[index] = asgns[name] if asgns.has_key? name
-          end
         else
           raise "unknown arg type #{arg.first.inspect}"
         end
@@ -109,7 +100,7 @@ class Ruby2Ruby < SexpProcessor
       end
     end
 
-    return "(#{args.join ', '})"
+    "(#{args.join ', '})"
   end
 
   def process_array(exp)
@@ -338,7 +329,7 @@ class Ruby2Ruby < SexpProcessor
 
     comm = exp.comments
     name = exp.shift
-    args = process(exp.shift)
+    args = process exp.shift
     args = "" if args == "()"
 
     exp.shift if exp == s(s(:nil)) # empty it out of a default nil expression
@@ -522,7 +513,8 @@ class Ruby2Ruby < SexpProcessor
              " ||"
            else
              a = process(args)[1..-2]
-             a.empty? ? "" : " |#{a}|"
+             a = " |#{a}|" unless a.empty?
+             a
            end
 
     b, e = if iter == "END" then
