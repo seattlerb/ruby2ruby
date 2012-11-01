@@ -82,13 +82,14 @@ class Ruby2Ruby < SexpProcessor
 
   def process_args(exp)
     args = []
-
     until exp.empty? do
       arg = exp.shift
       case arg
       when Symbol then
         args << arg
-      when Array then
+      when Sexp then
+        args << process(arg)
+      when Array then # TODO: is this needed at all???
         case arg.first
         when :lasgn then
           args << process(arg)
@@ -109,7 +110,7 @@ class Ruby2Ruby < SexpProcessor
       end
     end
 
-    return "(#{args.join ', '})"
+    "#{args.join ', '}"
   end
 
   def process_array(exp)
@@ -339,7 +340,7 @@ class Ruby2Ruby < SexpProcessor
     comm = exp.comments
     name = exp.shift
     args = process(exp.shift)
-    args = "" if args == "()"
+    args = "(#{args})" unless args.empty?
 
     exp.shift if exp == s(s(:nil)) # empty it out of a default nil expression
 
