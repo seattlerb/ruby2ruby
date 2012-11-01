@@ -528,7 +528,7 @@ class Ruby2Ruby < SexpProcessor
     # REFACTOR: ugh
     result = []
     result << "#{iter} {"
-    result << " |#{args}|" if args
+    result << " |#{args}|" if (args and not args.empty?)
     if body then
       result << " #{body.strip} "
     else
@@ -540,7 +540,7 @@ class Ruby2Ruby < SexpProcessor
 
     result = []
     result << "#{iter} #{b}"
-    result << " |#{args}|" if args
+    result << " |#{args}|" if (args and not args.empty?)
     result << "\n"
     if body then
       result << indent(body.strip)
