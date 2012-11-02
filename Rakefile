@@ -16,7 +16,7 @@ Hoe.spec 'ruby2ruby' do
   self.rubyforge_name = 'seattlerb'
 
   dependency "sexp_processor", "~> 4.0"
-  dependency "ruby_parser",    "~> 3.0.0.a10"
+  dependency "ruby_parser",    "~> 3.0.0"
 end
 
 def process ruby, file="stdin"
