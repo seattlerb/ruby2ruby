@@ -1,3 +1,9 @@
+=== 2.0.1 / 2012-11-02
+
+* 1 bug fix:
+
+  * Fixed dependency on alpha ruby_parser. *sigh*
+
 === 2.0.0 / 2012-11-02
 
 * 1 minor enhancement:
