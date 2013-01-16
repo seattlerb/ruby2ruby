@@ -1,0 +1,11 @@
+after_script:
+  - rake travis:after -t
+before_script:
+  - "sed -i \"s/\\(require 'hoe'\\)/\\1; Hoe.plugin :travis/\" Rakefile"
+  - gem install isolate hoe-travis --no-rdoc --no-ri
+  - rake travis:before -t
+language: ruby
+script: rake travis
+rvm:
+  - 1.9.3
+  - ruby-head
