@@ -24,7 +24,7 @@ class Regexp
 end
 
 class Ruby2Ruby < SexpProcessor
-  VERSION = '2.0.1'
+  VERSION = '2.0.2'
   LINE_LENGTH = 78
 
   BINARY = [:<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>>, :**]
