@@ -9,3 +9,5 @@ script: rake travis
 rvm:
   - 1.9.3
   - ruby-head
+notifications:
+  email: false
