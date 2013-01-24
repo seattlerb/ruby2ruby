@@ -229,6 +229,8 @@ class Ruby2Ruby < SexpProcessor
       receiver ||= "self"
       rhs = args.pop
       "#{receiver}[#{args.join(', ')}] = #{rhs}"
+    when :"!" then
+      "(not #{receiver})"
     when :"-@" then
       "-#{receiver}"
     when :"+@" then

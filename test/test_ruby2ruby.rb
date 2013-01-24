@@ -350,6 +350,21 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_unless_vs_if_not
+    rb1 = "a unless b"
+    rb2 = "a if (not b)"
+    rb3 = "a if ! b"
+
+    util_compare Ruby18Parser.new.parse(rb1), rb1
+    util_compare Ruby19Parser.new.parse(rb1), rb1
+
+    util_compare Ruby18Parser.new.parse(rb2), rb1
+    util_compare Ruby19Parser.new.parse(rb2), rb2
+
+    util_compare Ruby18Parser.new.parse(rb3), rb1
+    util_compare Ruby19Parser.new.parse(rb3), rb2
+  end
+
   def util_compare sexp, expected_ruby, expected_eval = nil
     assert_equal expected_ruby, @processor.process(sexp)
     assert_equal expected_eval, eval(expected_ruby) if expected_eval
@@ -384,7 +399,8 @@ def silent_eval ruby
 end
 
 def morph_and_eval src, from, to, processor
-  new_src = processor.new.process(Ruby18Parser.new.process(src.sub(from, to)))
+  parser = RubyParser.for_current_ruby
+  new_src = processor.new.process(parser.process(src.sub(from, to)))
 
   silent_eval new_src
   new_src
