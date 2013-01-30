@@ -399,7 +399,7 @@ def silent_eval ruby
 end
 
 def morph_and_eval src, from, to, processor
-  parser = RubyParser.for_current_ruby
+  parser = RubyParser.for_current_ruby rescue RubyParser.new
   new_src = processor.new.process(parser.process(src.sub(from, to)))
 
   silent_eval new_src
