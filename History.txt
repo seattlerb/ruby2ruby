@@ -1,3 +1,14 @@
+=== 2.0.3 / 2013-02-07
+
+* 2 minor enhancements:
+
+  * 1.9: Added support for ! call to go back to (not ...).
+  * 2nd and 3rd order testing now uses RubyPraser.for_current_ruby for maximal carnage.
+
+* 1 bug fix:
+
+  * On failure (eg ruby 2.0), fall back to compound RubyParser instance for 2nd & 3rd order testing
+
 === 2.0.2 / 2013-01-16
 
 * 1 minor enhancement:
