@@ -80,6 +80,42 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_attr_reader_diff
+    inn = s(:defn, :same, s(:args), s(:ivar, :@diff))
+    out = "def same\n  @diff\nend"
+    util_compare inn, out
+  end
+
+  def test_attr_reader_same
+    inn = s(:defn, :same, s(:args), s(:ivar, :@same))
+    out = "attr_reader :same"
+    util_compare inn, out
+  end
+
+  def test_attr_reader_same_name_diff_body
+    inn = s(:defn, :same, s(:args), s(:not, s(:ivar, :@same)))
+    out = "def same\n  (not @same)\nend"
+    util_compare inn, out
+  end
+
+  def test_attr_writer_diff
+    inn = s(:defn, :same=, s(:args, :o), s(:iasgn, :@diff, s(:lvar, :o)))
+    out = "def same=(o)\n  @diff = o\nend"
+    util_compare inn, out
+  end
+
+  def test_attr_writer_same_name_diff_body
+    inn = s(:defn, :same=, s(:args, :o), s(:iasgn, :@same, s(:lit, 42)))
+    out = "def same=(o)\n  @same = 42\nend"
+    util_compare inn, out
+  end
+
+  def test_attr_writer_same
+    inn = s(:defn, :same=, s(:args, :o), s(:iasgn, :@same , s(:lvar, :o)))
+    out = "attr_writer :same"
+    util_compare inn, out
+  end
+
   def test_dregx_slash
     inn = util_thingy(:dregx)
     out = '/a"b#{(1 + 1)}c"d\/e/'
