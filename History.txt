@@ -1,3 +1,9 @@
+=== 2.0.4 / 2013-03-28
+
+* 1 bug fix:
+
+  * Fixed attr_* generators in cases where the body isn't idiomatic. (robertfeldt)
+
 === 2.0.3 / 2013-02-07
 
 * 2 minor enhancements:
