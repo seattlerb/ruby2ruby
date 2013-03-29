@@ -13,7 +13,7 @@ processors in ruby easier than ever!
   
 * Clean, simple SexpProcessor generates ruby code from RubyParser compatible sexps.
 
-== SYNOPSYS:
+== SYNOPSIS:
 
     require 'rubygems'
     require 'ruby2ruby'
