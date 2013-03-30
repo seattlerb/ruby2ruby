@@ -314,7 +314,7 @@ class Ruby2Ruby < SexpProcessor
     type1 = exp[1].first
     type2 = exp[2].first rescue nil
 
-    if type1 == :args and [:ivar, :iasgn, :attrset].include? type2 then
+    if type1 == :args and exp[3].nil? and [:ivar, :iasgn, :attrset].include? type2 then
       name = exp.first # don't shift in case we pass through
       case type2
       when :ivar then
