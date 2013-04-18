@@ -313,8 +313,10 @@ class Ruby2Ruby < SexpProcessor
   def process_defn(exp) # :nodoc:
     type1 = exp[1].first
     type2 = exp[2].first rescue nil
+    expect = [:ivar, :iasgn, :attrset]
 
-    if type1 == :args and [:ivar, :iasgn, :attrset].include? type2 then
+    # s(name, args, ivar|iasgn|attrset)
+    if exp.size == 3 and type1 == :args and expect.include? type2 then
       name = exp.first # don't shift in case we pass through
       case type2
       when :ivar then

@@ -92,6 +92,12 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_attr_reader_double
+    inn = s(:defn, :same, s(:args), s(:ivar, :@same), s(:ivar, :@diff))
+    out = "def same\n  @same\n  @diff\nend"
+    util_compare inn, out
+  end
+
   def test_attr_reader_same_name_diff_body
     inn = s(:defn, :same, s(:args), s(:not, s(:ivar, :@same)))
     out = "def same\n  (not @same)\nend"
@@ -101,6 +107,13 @@ class TestRuby2Ruby < R2RTestCase
   def test_attr_writer_diff
     inn = s(:defn, :same=, s(:args, :o), s(:iasgn, :@diff, s(:lvar, :o)))
     out = "def same=(o)\n  @diff = o\nend"
+    util_compare inn, out
+  end
+
+  def test_attr_writer_double
+    inn = s(:defn, :same=, s(:args, :o),
+            s(:iasgn, :@same, s(:lvar, :o)), s(:iasgn, :@diff, s(:lvar, :o)))
+    out = "def same=(o)\n  @same = o\n  @diff = o\nend"
     util_compare inn, out
   end
 
