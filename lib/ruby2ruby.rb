@@ -118,13 +118,13 @@ class Ruby2Ruby < SexpProcessor
   def process_attrasgn(exp) # :nodoc:
     receiver = process exp.shift
     name = exp.shift
-    args = exp.empty? ? nil : exp.shift
 
     case name
     when :[]= then
-      rhs = exp.empty? ? nil : exp.shift
-      "#{receiver}[#{process args}] = #{process rhs}"
+      rhs = exp.empty? ? nil : exp.pop
+      "#{receiver}#{process_array exp} = #{process rhs}"
     else
+      args = exp.empty? ? nil : exp.shift
       name = name.to_s.sub(/=$/, '')
       if args && args != s(:arglist) then
         "#{receiver}.#{name} = #{process(args)}"
