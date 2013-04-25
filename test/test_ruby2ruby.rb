@@ -156,8 +156,13 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_call_self_index_equals
-    util_compare(s(:call, nil, :[]=, s(:lit, 42), s(:lit, 24)),
+    util_compare(s(:attrasgn, s(:self), :[]=, s(:lit, 42), s(:lit, 24)),
                  "self[42] = 24")
+  end
+
+  def test_call_self_index_equals_array
+    util_compare(s(:attrasgn, s(:self), :[]=, s(:lit, 1), s(:lit, 2), s(:lit, 3)),
+                 "self[1, 2] = 3")
   end
 
   def test_call_arglist_hash_first
