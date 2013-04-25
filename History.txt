@@ -1,3 +1,10 @@
+=== 2.0.5 / 2013-04-25
+
+* 2 bug fixes:
+
+  * Fixed attrasgn w/ multiple keys: a[x, y] = z. (derula)
+  * Fixed error w/ attr_* detection when more than 1 ivar/iasgn exist in body.
+
 === 2.0.4 / 2013-03-28
 
 * 1 bug fix:
