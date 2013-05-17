@@ -361,6 +361,7 @@ class Ruby2Ruby < SexpProcessor
 
     exp.shift if exp == s(s(:nil)) # empty it out of a default nil expression
 
+    # REFACTOR: use process_block but get it happier wrt parenthesize
     body = []
     until exp.empty? do
       body << indent(process(exp.shift))
@@ -782,7 +783,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_sclass(exp) # :nodoc:
-    "class << #{process(exp.shift)}\n#{indent(process(exp.shift))}\nend"
+    "class << #{process(exp.shift)}\n#{indent(process_block(exp))}\nend"
   end
 
   def process_self(exp) # :nodoc:
