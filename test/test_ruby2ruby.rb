@@ -281,6 +281,31 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_resbody_short_with_begin_end_multiple
+    # "begin; blah; rescue; []; end"
+    inn = s(:rescue,
+            s(:call, nil, :blah),
+            s(:resbody, s(:array),
+              s(:call, nil, :log),
+              s(:call, nil, :raise)))
+    out = "begin\n  blah\nrescue\n  log\n  raise\nend"
+    util_compare inn, out
+  end
+
+  def test_resbody_short_with_defn_multiple
+    inn = s(:defn,
+            :foo,
+            s(:args),
+            s(:rescue,
+              s(:lasgn, :a, s(:lit, 1)),
+              s(:resbody,
+                s(:array),
+                s(:call, nil, :log),
+                s(:call, nil, :raise))))
+    out = "def foo\n  begin\n    a = 1\n  rescue\n    log\n    raise\n  end\nend"
+    util_compare inn, out
+  end
+
   def test_regexp_options
     inn = s(:match3,
             s(:dregx,
