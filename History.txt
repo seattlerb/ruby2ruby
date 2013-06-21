@@ -1,3 +1,10 @@
+=== 2.0.6 / 2013-06-20
+
+* 2 bug fixes:
+
+  * Fixed bug with complex rescue but short enough to trigger 1-liner. (Confusion)
+  * Fixed multiple expressions inside sclass
+
 === 2.0.5 / 2013-04-25
 
 * 2 bug fixes:
