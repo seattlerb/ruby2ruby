@@ -342,6 +342,15 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_binary_operators
+    # (1 > 2)
+    Ruby2Ruby::BINARY.each do |op|
+      inn = s(:call, s(:lit, 1), op, s(:lit, 2))
+      out = "(1 #{op} 2)"
+      util_compare inn, out
+    end
+  end
+
   def test_call_empty_hash
     inn = s(:call, nil, :foo, s(:arglist, s(:hash)))
     out = "foo({})"
