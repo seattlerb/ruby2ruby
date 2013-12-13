@@ -35,7 +35,7 @@ class Ruby2Ruby < SexpProcessor
   LINE_LENGTH = 78
 
   # binary operation messages
-  BINARY = [:<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>>, :**]
+  BINARY = [:<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>>, :**, :'!=']
 
   ##
   # Nodes that represent assignment and probably need () around them.
