@@ -55,6 +55,7 @@ class Ruby2Ruby < SexpProcessor
                   :op_asgn_or,
                   :return,
                   :if, # HACK
+                  :rescue,
                  ]
 
   def initialize # :nodoc:
@@ -83,7 +84,10 @@ class Ruby2Ruby < SexpProcessor
   def process_arglist(exp) # custom made node # :nodoc:
     code = []
     until exp.empty? do
-      code << process(exp.shift)
+      arg = exp.shift
+      to_wrap = arg.first == :rescue
+      arg_code = process arg
+      code << (to_wrap ? "(#{arg_code})" : arg_code)
     end
     code.join ', '
   end
