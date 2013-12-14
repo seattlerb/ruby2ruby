@@ -1,3 +1,16 @@
+=== 2.0.7 / 2013-12-13
+
+* 4 minor enhancements:
+
+  * Add != to list of binary operators. (camertron) *le sigh*
+  * Clean out cruft from process_masgn that I can't reproduce anymore.
+  * Extend process_args to deal with masgn (eg: a.b { |(c, d)| ... }).
+  * Extend process_masgn to deal with both sexps and var lists.
+
+* 1 bug fix:
+
+  * Ensure proper parens on rescue subexpressions. (Bocete)
+
 === 2.0.6 / 2013-06-20
 
 * 2 bug fixes:
