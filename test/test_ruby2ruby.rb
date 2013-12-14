@@ -9,6 +9,7 @@ require 'ruby2ruby'
 require 'pt_testcase'
 require 'fileutils'
 require 'tmpdir'
+require 'ruby_parser' if ENV["CHECK_SEXPS"]
 
 class R2RTestCase < ParseTreeTestCase
   def self.previous key
@@ -39,7 +40,12 @@ start = __LINE__
 class TestRuby2Ruby < R2RTestCase
   def setup
     super
+    @check_sexp = ENV["CHECK_SEXPS"]
     @processor = Ruby2Ruby.new
+  end
+
+  def do_not_check_sexp!
+    @check_sexp = false
   end
 
   def test_util_dthing_dregx
@@ -87,6 +93,8 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_attr_reader_same
+    do_not_check_sexp!
+
     inn = s(:defn, :same, s(:args), s(:ivar, :@same))
     out = "attr_reader :same"
     util_compare inn, out
@@ -99,6 +107,8 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_attr_reader_same_name_diff_body
+    do_not_check_sexp!
+
     inn = s(:defn, :same, s(:args), s(:not, s(:ivar, :@same)))
     out = "def same\n  (not @same)\nend"
     util_compare inn, out
@@ -124,12 +134,16 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_attr_writer_same
+    do_not_check_sexp!
+
     inn = s(:defn, :same=, s(:args, :o), s(:iasgn, :@same , s(:lvar, :o)))
     out = "attr_writer :same"
     util_compare inn, out
   end
 
   def test_dregx_slash
+    do_not_check_sexp!
+
     inn = util_thingy(:dregx)
     out = '/a"b#{(1 + 1)}c"d\/e/'
     util_compare inn, out, /a"b2c"d\/e/
@@ -148,6 +162,8 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_lit_regexp_slash
+    do_not_check_sexp! # dunno why on this one
+
     util_compare s(:lit, /blah\/blah/), '/blah\/blah/', /blah\/blah/
   end
 
@@ -210,16 +226,15 @@ class TestRuby2Ruby < R2RTestCase
     inn = s(:block,
             s(:masgn,
               s(:array, s(:lasgn, :k), s(:lasgn, :v)),
-              s(:array,
-                s(:splat,
-                  s(:call,
-                    s(:call, nil, :line),
-                    :split,
-                    s(:lit, /\=/), s(:lit, 2))))),
+              s(:splat,
+                s(:call,
+                  s(:call, nil, :line),
+                  :split,
+                  s(:lit, /\=/), s(:lit, 2)))),
             s(:attrasgn,
               s(:self),
               :[]=,
-              s(:arglist, s(:lvar, :k)),
+              s(:lvar, :k),
               s(:call, s(:lvar, :v), :strip)))
 
     out = "k, v = *line.split(/\\=/, 2)\nself[k] = v.strip\n"
@@ -230,12 +245,11 @@ class TestRuby2Ruby < R2RTestCase
   def test_masgn_splat_wtf
     inn = s(:masgn,
             s(:array, s(:lasgn, :k), s(:lasgn, :v)),
-            s(:array,
-              s(:splat,
-                s(:call,
-                  s(:call, nil, :line),
-                  :split,
-                  s(:lit, /\=/), s(:lit, 2)))))
+            s(:splat,
+              s(:call,
+                s(:call, nil, :line),
+                :split,
+                s(:lit, /\=/), s(:lit, 2))))
     out = 'k, v = *line.split(/\\=/, 2)'
     util_compare inn, out
   end
@@ -264,9 +278,8 @@ class TestRuby2Ruby < R2RTestCase
             s(:call, nil, :x1),
             s(:resbody,
               s(:array),
-              s(:block,
-                s(:call, nil, :x2),
-                s(:call, nil, :x3))))
+              s(:call, nil, :x2),
+              s(:call, nil, :x3)))
 
     out = "begin\n  x1\nrescue\n  x2\n  x3\nend"
     util_compare inn, out
@@ -352,7 +365,7 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_call_empty_hash
-    inn = s(:call, nil, :foo, s(:arglist, s(:hash)))
+    inn = s(:call, nil, :foo, s(:hash))
     out = "foo({})"
     util_compare inn, out
   end
@@ -431,9 +444,8 @@ class TestRuby2Ruby < R2RTestCase
     inn = s(:rescue,
             s(:call, nil, :alpha),
             s(:resbody, s(:array),
-              s(:block,
-                s(:call, nil, :beta),
-                s(:call, nil, :gamma))))
+              s(:call, nil, :beta),
+              s(:call, nil, :gamma)))
     out = "begin\n  alpha\nrescue\n  beta\n  gamma\nend"
     util_compare inn, out
   end
@@ -446,7 +458,7 @@ class TestRuby2Ruby < R2RTestCase
 
     util_compare inn, out
   end
-  
+
   def test_call_arglist_rescue
     inn = s(:call,
             nil,
@@ -474,7 +486,10 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def util_compare sexp, expected_ruby, expected_eval = nil
-    assert_equal expected_ruby, @processor.process(sexp)
+    assert_equal sexp, RubyParser.new.process(expected_ruby), "ruby -> sexp" if
+      @check_sexp
+
+    assert_equal expected_ruby, @processor.process(sexp), "sexp -> ruby"
     assert_equal expected_eval, eval(expected_ruby) if expected_eval
   end
 
