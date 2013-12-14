@@ -222,6 +222,21 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_masgn_block_arg
+    inn = s(:iter,
+            s(:call,
+              s(:nil),
+              :x),
+            s(:args, s(:masgn, :a, :b)),
+            s(:dstr, "",
+              s(:evstr, s(:lvar, :a)),
+              s(:str, "="),
+              s(:evstr, s(:lvar, :b))))
+    out = 'nil.x { |(a, b)| "#{a}=#{b}" }'
+
+    util_compare inn, out
+  end
+
   def test_masgn_wtf
     inn = s(:block,
             s(:masgn,

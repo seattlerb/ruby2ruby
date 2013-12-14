@@ -104,6 +104,8 @@ class Ruby2Ruby < SexpProcessor
         case arg.first
         when :lasgn then
           args << process(arg)
+        when :masgn then
+          args << process(arg)
         else
           raise "unknown arg type #{arg.first.inspect}"
         end
@@ -601,40 +603,43 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_masgn(exp) # :nodoc:
-    lhs = exp.shift
-    rhs = exp.empty? ? nil : exp.shift
+    # s(:masgn, s(:array, s(:lasgn, :var), ...), s(:to_ary, <val>, ...))
+    # s(:iter, <call>, s(:args, s(:masgn, :a, :b)), <body>)
 
-    case lhs.first
-    when :array then
-      lhs.shift
-      lhs = lhs.map do |l|
-        case l.first
-        when :masgn then
-          "(#{process(l)})"
-        else
-          process(l)
+    case exp.first
+    when Sexp then
+      lhs = exp.shift
+      rhs = exp.empty? ? nil : exp.shift
+
+      case lhs.first
+      when :array then
+        lhs.shift # node type
+        lhs = lhs.map do |l|
+          case l.first
+          when :masgn then
+            "(#{process(l)})"
+          else
+            process(l)
+          end
         end
+      else
+        raise "no clue: #{lhs.inspect}"
       end
-    when :lasgn then
-      lhs = [ splat(lhs.last) ]
-    when :splat then
-      lhs = [ :"*" ]
-    else
-      raise "no clue: #{lhs.inspect}"
-    end
 
-    if context[1] == :iter and rhs then
-      lhs << splat(rhs[1])
-      rhs = nil
-    end
-
-    unless rhs.nil? then
-      t = rhs.first
-      rhs = process rhs
-      rhs = rhs[1..-2] if t == :array # FIX: bad? I dunno
-      return "#{lhs.join(", ")} = #{rhs}"
+      unless rhs.nil? then
+        t = rhs.first
+        rhs = process rhs
+        rhs = rhs[1..-2] if t == :array # FIX: bad? I dunno
+        return "#{lhs.join(", ")} = #{rhs}"
+      else
+        return lhs.join(", ")
+      end
+    when Symbol then # block arg list w/ masgn
+      result = exp.join ", "
+      exp.clear
+      "(#{result})"
     else
-      return lhs.join(", ")
+      raise "unknown masgn: #{exp.inspect}"
     end
   end
 
