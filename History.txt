@@ -1,3 +1,9 @@
+=== 2.0.8 / 2014-03-24
+
+* 1 bug fix:
+
+  * 2.0/2.1: Fixed support for **kwsplat. (troessner)
+
 === 2.0.7 / 2013-12-13
 
 * 4 minor enhancements:
