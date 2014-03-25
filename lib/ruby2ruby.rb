@@ -375,7 +375,8 @@ class Ruby2Ruby < SexpProcessor
 
     body << "# do nothing" if body.empty?
     body = body.join("\n")
-    body = body.lines[1..-2].join("\n") if body =~ /^\Abegin/ && body =~ /^end\z/
+    body = body.lines.to_a[1..-2].join("\n") if
+      body =~ /^\Abegin/ && body =~ /^end\z/
     body = indent(body) unless body =~ /(^|\n)rescue/
 
     return "#{comm}def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
