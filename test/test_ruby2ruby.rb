@@ -19,7 +19,7 @@ class R2RTestCase < ParseTreeTestCase
   def self.generate_test klass, node, data, input_name, output_name
     output_name = data.has_key?('Ruby2Ruby') ? 'Ruby2Ruby' : 'Ruby'
 
-    return if node.to_s =~ /19$/
+    return if node.to_s =~ /(str_question|not|bang).*(19|20|21)$/
 
     klass.class_eval <<-EOM
       def test_#{node}
@@ -167,6 +167,12 @@ class TestRuby2Ruby < R2RTestCase
     util_compare s(:lit, /blah\/blah/), '/blah\/blah/', /blah\/blah/
   end
 
+  def test_call_kwsplat
+    inn = s(:call, nil, :test_splat, s(:kwsplat, s(:call, nil, :testing)))
+    out = "test_splat(**testing)"
+    util_compare inn, out
+  end
+
   def test_call_self_index
     util_compare s(:call, nil, :[], s(:lit, 42)), "self[42]"
   end
@@ -219,6 +225,12 @@ class TestRuby2Ruby < R2RTestCase
               s(:call, nil, :d)))
 
     out = "(a + (b ? (c) : (d)))"
+    util_compare inn, out
+  end
+
+  def test_defn_kwsplat
+    inn = s(:defn, :test, s(:args, :"**testing"))
+    out = "def test(**testing)\n  # do nothing\nend"
     util_compare inn, out
   end
 

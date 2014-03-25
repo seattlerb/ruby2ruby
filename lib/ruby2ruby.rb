@@ -582,6 +582,10 @@ class Ruby2Ruby < SexpProcessor
     exp.shift.to_s
   end
 
+  def process_kwsplat(exp)
+    "**#{process exp.shift}"
+  end
+
   def process_lasgn(exp) # :nodoc:
     s = "#{exp.shift}"
     s += " = #{process exp.shift}" unless exp.empty?
