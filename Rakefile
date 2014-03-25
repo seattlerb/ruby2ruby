@@ -13,8 +13,6 @@ Hoe.plugin :isolate
 Hoe.spec 'ruby2ruby' do
   developer 'Ryan Davis', 'ryand-ruby@zenspider.com'
 
-  self.rubyforge_name = 'seattlerb'
-
   dependency "sexp_processor", "~> 4.0"
   dependency "ruby_parser",    "~> 3.1"
 end
