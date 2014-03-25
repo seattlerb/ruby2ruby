@@ -229,9 +229,19 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_defn_kwsplat
-    inn = s(:defn, :test, s(:args, :"**testing"))
+    inn = s(:defn, :test, s(:args, :"**testing"), s(:nil))
     out = "def test(**testing)\n  # do nothing\nend"
-    util_compare inn, out
+    assert_parse inn, out
+  end
+
+  def test_defn_rescue_return
+    inn = s(:defn, :blah, s(:args),
+           s(:rescue,
+             s(:lasgn, :a, s(:lit, 1)),
+             s(:resbody, s(:array), s(:return, s(:str, "a")))))
+    out = "def blah\n  a = 1\nrescue\n  return \"a\"\nend"
+
+    assert_parse inn, out
   end
 
   def test_masgn_block_arg
@@ -342,7 +352,7 @@ class TestRuby2Ruby < R2RTestCase
                 s(:array),
                 s(:call, nil, :log),
                 s(:call, nil, :raise))))
-    out = "def foo\n  begin\n    a = 1\n  rescue\n    log\n    raise\n  end\nend"
+    out = "def foo\n  a = 1\nrescue\n  log\n  raise\nend"
     util_compare inn, out
   end
 
@@ -512,13 +522,14 @@ class TestRuby2Ruby < R2RTestCase
     util_compare Ruby19Parser.new.parse(rb3), rb2
   end
 
-  def util_compare sexp, expected_ruby, expected_eval = nil
+  def assert_parse sexp, expected_ruby, expected_eval = nil
     assert_equal sexp, RubyParser.new.process(expected_ruby), "ruby -> sexp" if
       @check_sexp
 
     assert_equal expected_ruby, @processor.process(sexp), "sexp -> ruby"
     assert_equal expected_eval, eval(expected_ruby) if expected_eval
   end
+  alias util_compare assert_parse
 
   def util_thingy(type)
     s(type,

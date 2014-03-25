@@ -370,12 +370,13 @@ class Ruby2Ruby < SexpProcessor
     # REFACTOR: use process_block but get it happier wrt parenthesize
     body = []
     until exp.empty? do
-      body << indent(process(exp.shift))
+      body << process(exp.shift)
     end
 
-    body << indent("# do nothing") if body.empty?
-
+    body << "# do nothing" if body.empty?
     body = body.join("\n")
+    body = body.lines[1..-2].join("\n") if body =~ /^\Abegin/ && body =~ /^end\z/
+    body = indent(body) unless body =~ /(^|\n)rescue/
 
     return "#{comm}def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
   end
@@ -760,7 +761,9 @@ class Ruby2Ruby < SexpProcessor
     els  = process(exp.pop)   unless exp.last.first  == :resbody
 
     body ||= "# do nothing"
-    simple = exp.size == 1 && !exp.resbody.block && exp.resbody.size <= 3
+    simple = exp.size == 1 && exp.resbody.size <= 3 &&
+      !exp.resbody.block &&
+      !exp.resbody.return
 
     resbodies = []
     until exp.empty? do
