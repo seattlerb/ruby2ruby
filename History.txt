@@ -1,3 +1,12 @@
+=== 2.1.0 / 2014-04-23
+
+* 4 minor enhancements:
+
+  * Don't indent defn body extra if it has a top-level rescue.
+  * Don't indent defn body until fully processed.
+  * Don't use simple rescue form if resbody is a return (statement keyword). (eyberg)
+  * Remove superfluous begin/end for top-level defn rescue.
+
 === 2.0.8 / 2014-03-24
 
 * 1 bug fix:
