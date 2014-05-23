@@ -11,7 +11,9 @@ class Regexp
     ENC_EUC  = /x/e.options
     ENC_SJIS = /x/s.options
     ENC_UTF8 = /x/u.options
+  end
 
+  unless defined? CODES then
     CODES = {
       EXTENDED   => 'x',
       IGNORECASE => 'i',
