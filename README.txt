@@ -27,8 +27,9 @@ processors in ruby easier than ever!
     
     pp sexp
 
-    p ruby2ruby.process(sexp)
-    
+    p ruby2ruby.process(sexp.deep_clone) # Note: #process destroys its input, so
+                                         # #deep_clone if you need to preserve it
+
     ## outputs:
 
     s(:block,
