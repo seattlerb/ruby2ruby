@@ -1,3 +1,9 @@
+=== 2.1.2 / 2014-08-28
+
+* 1 bug fix:
+
+  * Fixed readme to point out that deep_clone may be needed. (heathd)
+
 === 2.1.1 / 2014-06-09
 
 * 1 bug fix:
