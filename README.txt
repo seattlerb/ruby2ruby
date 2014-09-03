@@ -1,7 +1,7 @@
 = ruby2ruby
 
 home :: https://github.com/seattlerb/ruby2ruby
-rdoc :: http://seattlerb.rubyforge.org/ruby2ruby
+rdoc :: http://docs.seattlerb.org/ruby2ruby
 
 == DESCRIPTION:
 
