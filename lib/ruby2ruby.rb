@@ -108,6 +108,9 @@ class Ruby2Ruby < SexpProcessor
           args << process(arg)
         when :masgn then
           args << process(arg)
+        when :kwarg then
+          _, k, v = arg
+          args << "#{k}: #{process v}"
         else
           raise "unknown arg type #{arg.first.inspect}"
         end

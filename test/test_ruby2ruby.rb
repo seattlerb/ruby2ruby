@@ -173,6 +173,27 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_defn_kwargs
+    inn = s(:defn, :initialize,
+            s(:args, :arg, s(:kwarg, :keyword, s(:nil)), :"**args"),
+            s(:nil))
+    out = "def initialize(arg, keyword: nil, **args)\n  # do nothing\nend"
+
+    util_compare inn, out
+  end
+
+  def test_defn_kwargs2
+    inn = s(:defn, :initialize,
+            s(:args, :arg,
+              s(:kwarg, :kw1, s(:nil)),
+              s(:kwarg, :kw2, s(:nil)),
+              :"**args"),
+            s(:nil))
+    out = "def initialize(arg, kw1: nil, kw2: nil, **args)\n  # do nothing\nend"
+
+    util_compare inn, out
+  end
+
   def test_call_self_index
     util_compare s(:call, nil, :[], s(:lit, 42)), "self[42]"
   end
