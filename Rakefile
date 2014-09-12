@@ -13,6 +13,8 @@ Hoe.plugin :isolate
 Hoe.spec 'ruby2ruby' do
   developer 'Ryan Davis', 'ryand-ruby@zenspider.com'
 
+  license "MIT"
+
   dependency "sexp_processor", "~> 4.0"
   dependency "ruby_parser",    "~> 3.1"
 end
@@ -81,6 +83,10 @@ task :debug => :isolate do
          end
 
   puts process(ruby, file)
+end
+
+task :bugs do
+  sh "for f in bug*.rb ; do #{Gem.ruby} -S rake debug F=$f && rm $f ; done"
 end
 
 # vim: syntax=ruby
