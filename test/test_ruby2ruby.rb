@@ -80,6 +80,49 @@ class TestRuby2Ruby < R2RTestCase
     assert_equal exp, eval(out)
   end
 
+  def test_hash_parens_str
+    inn = s(:hash, s(:lit, :k), s(:str, "banana"))
+    out = '{ :k => "banana" }'
+    util_compare inn, out
+  end
+
+  def test_hash_parens_lit
+    inn = s(:hash, s(:lit, :k), s(:lit, 0.07))
+    out = "{ :k => 0.07 }"
+    util_compare inn, out
+  end
+
+  def test_hash_parens_bool
+    inn = s(:hash, s(:lit, :k), s(:true))
+    out = "{ :k => true }"
+    util_compare inn, out
+  end
+
+  def test_hash_parens_nil
+    inn = s(:hash, s(:lit, :k), s(:nil))
+    out = "{ :k => nil }"
+    util_compare inn, out
+  end
+
+  def test_hash_parens_lvar
+    inn = s(:hash, s(:lit, :k), s(:lvar, :x))
+    out = "{ :k => x }"
+    util_compare inn, out
+  end
+
+  def test_hash_parens_call
+    inn = s(:hash, s(:lit, :k), s(:call, nil, :foo, s(:lit, :bar)))
+    out = "{ :k => foo(:bar) }"
+    util_compare inn, out
+  end
+
+  def test_hash_parens_iter
+    iter = s(:iter, s(:call, nil, :foo), s(:args), s(:str, "bar"))
+    inn = s(:hash, s(:lit, :k), iter)
+    out = '{ :k => (foo { "bar" }) }'
+    util_compare inn, out
+  end
+
   def test_and_alias
     inn = s(:and, s(:true), s(:alias, s(:lit, :a), s(:lit, :b)))
     out = "true and (alias :a :b)"
