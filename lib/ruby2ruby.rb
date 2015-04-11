@@ -60,6 +60,24 @@ class Ruby2Ruby < SexpProcessor
                   :rescue,
                  ]
 
+  ##
+  # Some sexp types are OK without parens when appearing as hash values.
+  # This list can include `:call`s because they're always printed with parens
+  # around their arguments. For example:
+  #
+  #     { :foo => (bar("baz")) } # The outer parens are unnecessary
+  #     { :foo => bar("baz") }   # This is the normal code style
+
+  HASH_VAL_NO_PAREN = [
+    :call,
+    :false,
+    :lit,
+    :lvar,
+    :nil,
+    :str,
+    :true
+  ]
+
   def initialize # :nodoc:
     super
     @indent = "  "
@@ -485,7 +503,7 @@ class Ruby2Ruby < SexpProcessor
       rhs = exp.shift
       t = rhs.first
       rhs = process rhs
-      rhs = "(#{rhs})" unless [:lit, :str].include? t # TODO: verify better!
+      rhs = "(#{rhs})" unless HASH_VAL_NO_PAREN.include? t
 
       result << "#{lhs} => #{rhs}"
     end
