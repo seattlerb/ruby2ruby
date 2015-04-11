@@ -211,8 +211,25 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_call_kwsplat
-    inn = s(:call, nil, :test_splat, s(:kwsplat, s(:call, nil, :testing)))
+    inn = s(:call, nil, :test_splat, s(:hash, s(:kwsplat, s(:call, nil, :testing))))
     out = "test_splat(**testing)"
+
+    util_compare inn, out
+  end
+
+  def test_call_arg_assoc_kwsplat
+    inn = s(:call, nil, :f,
+           s(:lit, 1),
+           s(:hash, s(:lit, :kw), s(:lit, 2), s(:kwsplat, s(:lit, 3))))
+    out = "f(1, :kw => 2, **3)"
+
+    util_compare inn, out
+  end
+
+  def test_call_kwsplat_x
+    inn = s(:call, nil, :a, s(:hash, s(:kwsplat, s(:lit, 1))))
+    out = "a(**1)"
+
     util_compare inn, out
   end
 

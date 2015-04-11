@@ -499,13 +499,21 @@ class Ruby2Ruby < SexpProcessor
     result = []
 
     until exp.empty?
-      lhs = process(exp.shift)
-      rhs = exp.shift
-      t = rhs.first
-      rhs = process rhs
-      rhs = "(#{rhs})" unless HASH_VAL_NO_PAREN.include? t
+      s = exp.shift
+      t = s.sexp_type
+      lhs = process s
 
-      result << "#{lhs} => #{rhs}"
+      case t
+      when :kwsplat then
+        result << lhs
+      else
+        rhs = exp.shift
+        t = rhs.first
+        rhs = process rhs
+        rhs = "(#{rhs})" unless HASH_VAL_NO_PAREN.include? t
+
+        result << "#{lhs} => #{rhs}"
+      end
     end
 
     return result.empty? ? "{}" : "{ #{result.join(', ')} }"
