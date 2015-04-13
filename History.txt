@@ -1,3 +1,13 @@
+=== 2.1.4 / 2015-04-13
+
+* 1 minor enhancement:
+
+  * Wrap fewer hash values in parentheses. (jaredbeck)
+
+* 1 bug fix:
+
+  * Fixed handling of kwsplat args.
+
 === 2.1.3 / 2014-09-26
 
 * 1 bug fix:
