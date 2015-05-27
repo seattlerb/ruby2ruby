@@ -1,3 +1,9 @@
+=== 2.2.0 / 2015-05-27
+
+* 1 minor enhancement:
+
+  * Normalized block arg goalposts (always there unless arg slot == 0).
+
 === 2.1.4 / 2015-04-13
 
 * 1 minor enhancement:
