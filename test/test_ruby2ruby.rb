@@ -19,7 +19,7 @@ class R2RTestCase < ParseTreeTestCase
   def self.generate_test klass, node, data, input_name, output_name
     output_name = data.has_key?('Ruby2Ruby') ? 'Ruby2Ruby' : 'Ruby'
 
-    return if node.to_s =~ /(str_question|not|bang).*(19|20|21)$/
+    return if node.to_s =~ /(str_question|not|bang).*_(19|20|21|22)$/
 
     klass.class_eval <<-EOM
       def test_#{node}
@@ -117,7 +117,7 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_hash_parens_iter
-    iter = s(:iter, s(:call, nil, :foo), s(:args), s(:str, "bar"))
+    iter = s(:iter, s(:call, nil, :foo), 0, s(:str, "bar"))
     inn = s(:hash, s(:lit, :k), iter)
     out = '{ :k => (foo { "bar" }) }'
     util_compare inn, out
