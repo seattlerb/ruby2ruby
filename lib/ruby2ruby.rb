@@ -218,7 +218,7 @@ class Ruby2Ruby < SexpProcessor
     end
   end
 
-  def process_call(exp) # :nodoc:
+  def process_call(exp, safe_call = false) # :nodoc:
     receiver_node_type = exp.first.nil? ? nil : exp.first.first
     receiver = process exp.shift
     receiver = "(#{receiver})" if ASSIGN_NODES.include? receiver_node_type
@@ -271,12 +271,17 @@ class Ruby2Ruby < SexpProcessor
     else
       args     = nil                    if args.empty?
       args     = "(#{args.join(', ')})" if args
-      receiver = "#{receiver}."         if receiver
+      receiver = "#{receiver}."         if receiver and not safe_call
+      receiver = "#{receiver}&."        if receiver and safe_call
 
       "#{receiver}#{name}#{args}"
     end
   ensure
     @calls.pop
+  end
+
+  def process_safe_call(exp) # :nodoc:
+    process_call(exp, :safe)
   end
 
   def process_case(exp) # :nodoc:
