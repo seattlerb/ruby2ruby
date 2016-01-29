@@ -827,6 +827,24 @@ class Ruby2Ruby < SexpProcessor
     end
   end
 
+  def process_safe_attrasgn(exp) # :nodoc:
+    receiver = process exp.shift
+    name = exp.shift
+    rhs  = exp.pop
+    args = exp.pop # should be nil
+    exp.clear
+
+    raise "dunno what to do: #{args.inspect}" if args
+
+    name = name.to_s.sub(/=$/, '')
+
+    if rhs && rhs != s(:arglist) then
+      "#{receiver}&.#{name} = #{process(rhs)}"
+    else
+      raise "dunno what to do: #{rhs.inspect}"
+    end
+  end
+
   def process_sclass(exp) # :nodoc:
     "class << #{process(exp.shift)}\n#{indent(process_block(exp))}\nend"
   end
