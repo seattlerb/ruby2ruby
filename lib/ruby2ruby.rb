@@ -254,7 +254,11 @@ class Ruby2Ruby < SexpProcessor
 
     case name
     when *BINARY then
-      "(#{receiver} #{name} #{args.join(', ')})"
+      if safe_call
+        "#{receiver}&.#{name}(#{args.join(', ')})"
+      else
+        "(#{receiver} #{name} #{args.join(', ')})"
+      end
     when :[] then
       receiver ||= "self"
       "#{receiver}[#{args.join(', ')}]"

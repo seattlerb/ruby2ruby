@@ -391,6 +391,16 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_safe_call_binary
+    inn = s(:safe_call,
+            s(:call, nil, :x),
+            :>,
+            s(:lit, 1))
+
+    out = "x&.>(1)"
+    util_compare inn, out
+  end
+
   def test_splat_call
     inn = s(:call, nil, :x,
             s(:splat,
