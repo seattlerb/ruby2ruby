@@ -48,6 +48,87 @@ class TestRuby2Ruby < R2RTestCase
     @check_sexp = false
   end
 
+  def processor(opts)
+    Ruby2Ruby.new(opts)
+  end
+
+  def processor_hash19
+    processor(hash_syntax: :ruby19)
+  end
+
+  def test_new_processor_no_such_option
+    # TODO: figure out how to use `assert_raises` here.
+    # Running into trouble with e.g. `TestRuby2Ruby2`.
+    begin
+      processor(foo: :bar)
+      assert false, "Expected InvalidOption error"
+    rescue StandardError => e
+      assert_includes e.class.to_s, "InvalidOption"
+    end
+  end
+
+  def test_new_processor_bad_option_value
+    # TODO: figure out how to use `assert_raises` here.
+    # Running into trouble with e.g. `TestRuby2Ruby2`.
+    begin
+      processor(hash_syntax: :banana)
+      assert false, "Expected InvalidOption error"
+    rescue StandardError => e
+      assert_includes e.class.to_s, "InvalidOption"
+    end
+  end
+
+  def test_extract_option
+    assert_equal :b, @processor.extract_option([:a, :b], :b, :c)
+  end
+
+  def test_extract_option_default
+    assert_equal :c, @processor.extract_option([:a, :b], nil, :c)
+  end
+
+  def test_extract_option_invalid
+    # TODO: figure out how to use `assert_raises` here.
+    # Running into trouble with `Ruby2Ruby2` and `Ruby2Ruby3`.
+    begin
+      @processor.extract_option([:a, :b], :d, :c)
+      assert false, "Expected InvalidOption error"
+    rescue StandardError
+      assert true
+    end
+  end
+
+  def test_ruby19_hash_key
+    compat = Proc.new { |key| @processor.ruby19_hash_key?(key) }
+    assert_equal true, compat.call(s(:lit, :foo)),
+      "symbol should be compatible"
+    assert_equal false, compat.call(s(:str, "foo")),
+      "string should not be compatible"
+    assert_equal false, compat.call(s(:lit, 7)),
+      "literal number should not be compatible"
+    assert_equal false, compat.call(s(:true)),
+      "literal boolean should not be compatible"
+  end
+
+  def test_process_hash_ruby19_symbol_key
+    inn = s(:hash, s(:lit, :foo), s(:str, "bar"))
+    assert_equal '{ foo: "bar" }', processor_hash19.process(inn)
+  end
+
+  def test_process_hash_ruby19_string_key
+    inn = s(:hash, s(:str, "foo"), s(:str, "bar"))
+    assert_equal '{ "foo" => "bar" }', processor_hash19.process(inn)
+  end
+
+  def test_process_hash_ruby19_when_key_is_not_a_literal
+    inn = s(:hash, s(:call, nil, :foo, s(:str, "bar")), s(:str, "baz"))
+    assert_equal '{ foo("bar") => "baz" }', processor_hash19.process(inn)
+  end
+
+  def test_process_hash_ruby19_mixed_pairs
+    inn = s(:hash, s(:lit, :foo), s(:str, "bar"), s(:lit, 0.7), s(:str, "baz"))
+    assert_equal '{ foo: "bar", 0.7 => "baz" }', processor_hash19.process(inn)
+  end
+
   def test_util_dthing_dregx
     inn = util_thingy(:dregx)
     inn.shift
