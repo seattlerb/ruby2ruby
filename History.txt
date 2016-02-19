@@ -1,3 +1,11 @@
+=== 2.3.0 / 2016-02-18
+
+* 3 minor enhancements:
+
+  * Added support for safe navigation/lonely operator. (presidentbeef)
+  * Expanded tests for 2.3 support
+  * Support safe attrasgn. (presidentbeef).
+
 === 2.2.0 / 2015-05-27
 
 * 1 minor enhancement:
