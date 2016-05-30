@@ -734,6 +734,16 @@ class Ruby2Ruby < SexpProcessor
     "$#{exp.shift}"
   end
 
+  def process_op_asgn(exp) # :nodoc:
+    # [[:lvar, :x], [:call, nil, :z, [:lit, 1]], :y, :"||"]
+    lhs = process(exp.shift)
+    rhs = process(exp.shift)
+    index = exp.shift
+    op = exp.shift
+
+    "#{lhs}.#{index} #{op}= #{rhs}"
+  end
+
   def process_op_asgn1(exp) # :nodoc:
     # [[:lvar, :b], [:arglist, [:lit, 1]], :"||", [:lit, 10]]
     lhs = process(exp.shift)

@@ -591,6 +591,17 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_op_asgn
+    inn = s(:op_asgn,
+            s(:call, nil, :x),
+            s(:call, nil, :z, s(:lit, 1)),
+            :y,
+            :+)
+
+    out = "x.y += z(1)"
+    util_compare inn, out
+  end
+
   def test_rescue_block
     inn = s(:rescue,
             s(:call, nil, :alpha),
