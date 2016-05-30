@@ -864,6 +864,27 @@ class Ruby2Ruby < SexpProcessor
     end
   end
 
+  def process_safe_op_asgn(exp) # :nodoc:
+    # [[:lvar, :x], [:call, nil, :z, [:lit, 1]], :y, :"||"]
+    lhs = process(exp.shift)
+    rhs = process(exp.shift)
+    index = exp.shift
+    op = exp.shift
+
+    "#{lhs}&.#{index} #{op}= #{rhs}"
+  end
+
+  def process_safe_op_asgn2(exp) # :nodoc:
+    # [[:lvar, :c], :var=, :"||", [:lit, 20]]
+    lhs = process(exp.shift)
+    index = exp.shift.to_s[0..-2]
+    msg = exp.shift
+
+    rhs = process(exp.shift)
+
+    "#{lhs}&.#{index} #{msg}= #{rhs}"
+  end
+
   def process_sclass(exp) # :nodoc:
     "class << #{process(exp.shift)}\n#{indent(process_block(exp))}\nend"
   end
