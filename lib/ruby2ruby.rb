@@ -256,6 +256,8 @@ class Ruby2Ruby < SexpProcessor
     when *BINARY then
       if safe_call
         "#{receiver}&.#{name}(#{args.join(', ')})"
+      elsif args.length > 1
+        "#{receiver}.#{name}(#{args.join(', ')})"
       else
         "(#{receiver} #{name} #{args.join(', ')})"
       end
