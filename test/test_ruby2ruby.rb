@@ -412,6 +412,28 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_safe_op_asgn
+    inn = s(:safe_op_asgn,
+            s(:call, nil, :x),
+            s(:call, nil, :z, s(:lit, 1)),
+            :y,
+            :+)
+
+    out = "x&.y += z(1)"
+    util_compare inn, out
+  end
+
+  def test_safe_op_asgn2
+    inn = s(:safe_op_asgn2,
+            s(:call, nil, :x),
+            :y=,
+            :"||",
+            s(:lit, 1))
+
+    out = "x&.y ||= 1"
+    util_compare inn, out
+  end
+
   def test_splat_call
     inn = s(:call, nil, :x,
             s(:splat,
@@ -596,6 +618,17 @@ class TestRuby2Ruby < R2RTestCase
   def test_nested_rescue_exception2
     inn = s(:ensure, s(:rescue, s(:lit, 2), s(:resbody, s(:array, s(:const, :Exception)), s(:lit, 3))), s(:lit, 1))
     out = "begin\n  2\nrescue Exception\n  3\nensure\n  1\nend"
+    util_compare inn, out
+  end
+
+  def test_op_asgn
+    inn = s(:op_asgn,
+            s(:call, nil, :x),
+            s(:call, nil, :z, s(:lit, 1)),
+            :y,
+            :+)
+
+    out = "x.y += z(1)"
     util_compare inn, out
   end
 
