@@ -1,3 +1,13 @@
+=== 2.3.1 / 2016-10-09
+
+* 1 minor enhancement:
+
+  * Support more op_asgn nodes. (presidentbeef)
+
+* 1 bug fix:
+
+  * Fix for non-binary 'binary' calls (eg arity > 1). (presidentbeef)
+
 === 2.3.0 / 2016-02-18
 
 * 3 minor enhancements:
