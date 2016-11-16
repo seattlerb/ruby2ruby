@@ -163,6 +163,22 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_bug_043
+    inn = s(:defn, :check, s(:args),
+            s(:rescue,
+              s(:call, nil, :foo),
+              s(:resbody, s(:array), s(:call, nil, :bar), s(:call, nil, :bar))),
+            s(:call, nil, :bar),
+            s(:if,
+              s(:call, nil, :foo),
+              s(:return, s(:call, nil, :bar)),
+              s(:call, nil, :bar)))
+
+    out = "def check\n  begin\n    foo\n  rescue\n    bar\n    bar\n  end\n  bar\n  if foo then\n    return bar\n  else\n    bar\n  end\nend"
+
+    util_compare inn, out
+  end
+
   def test_bug_044
     inn = s(:if,
             s(:call,
