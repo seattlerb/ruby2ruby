@@ -50,6 +50,7 @@ class Ruby2Ruby < SexpProcessor
                   :flip3,
                   :lasgn,
                   :masgn,
+                  :match3,
                   :attrasgn,
                   :op_asgn1,
                   :op_asgn2,

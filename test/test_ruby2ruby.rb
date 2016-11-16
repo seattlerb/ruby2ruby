@@ -163,6 +163,19 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_bug_044
+    inn = s(:if,
+            s(:call,
+              s(:match3, s(:lit, /a/), s(:call, nil, :foo)),
+              :or,
+              s(:call, nil, :bar)),
+            s(:call, nil, :puts, s(:call, nil, :bar)),
+            nil)
+    out = "puts(bar) if (foo =~ /a/).or(bar)"
+
+    util_compare inn, out
+  end
+
   def test_attr_writer_double
     inn = s(:defn, :same=, s(:args, :o),
             s(:iasgn, :@same, s(:lvar, :o)), s(:iasgn, :@diff, s(:lvar, :o)))
