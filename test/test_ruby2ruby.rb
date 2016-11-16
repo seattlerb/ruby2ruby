@@ -176,6 +176,20 @@ class TestRuby2Ruby < R2RTestCase
     util_compare inn, out
   end
 
+  def test_bug_045
+    # return foo.baaaaaaar ? ::B.newsss(true) : ::B.newadsfasdfasdfasdfasdsssss(false)
+
+    inn = s(:return,
+            s(:if,
+              s(:call, s(:call, nil, :foo), :baaaaaaar),
+              s(:call, s(:colon3, :B), :newsss, s(:true)),
+              s(:call, s(:colon3, :B), :newadsfasdfasdfasdfasdsssss, s(:false))))
+
+    out = "return (if foo.baaaaaaar then\n  ::B.newsss(true)\nelse\n  ::B.newadsfasdfasdfasdfasdsssss(false)\nend)"
+
+    util_compare inn, out
+  end
+
   def test_attr_writer_double
     inn = s(:defn, :same=, s(:args, :o),
             s(:iasgn, :@same, s(:lvar, :o)), s(:iasgn, :@diff, s(:lvar, :o)))

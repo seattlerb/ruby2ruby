@@ -840,12 +840,14 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_return(exp) # :nodoc:
-    # HACK return "return" + (exp.empty? ? "" : " #{process exp.shift}")
-
     if exp.empty? then
-      return "return"
+      "return"
     else
-      return "return #{process exp.shift}"
+      rhs = exp.shift
+      rhs_type = rhs.sexp_type
+      rhs = process rhs
+      rhs = "(#{rhs})" if ASSIGN_NODES.include? rhs_type
+      "return #{rhs}"
     end
   end
 
