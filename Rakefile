@@ -15,7 +15,7 @@ Hoe.spec 'ruby2ruby' do
 
   license "MIT"
 
-  dependency "sexp_processor", "~> 4.0"
+  dependency "sexp_processor", "~> 4.6"
   dependency "ruby_parser",    "~> 3.1"
 end
 
