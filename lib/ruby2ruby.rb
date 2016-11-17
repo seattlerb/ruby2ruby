@@ -1071,12 +1071,12 @@ class Ruby2Ruby < SexpProcessor
   # Utility method to escape something interpolated.
 
   def dthing_escape type, lit
-    lit = lit.gsub(/\n/, '\n')
+    # TODO: this needs more testing
     case type
     when :dregx then
       lit.gsub(/(\A|[^\\])\//, '\1\/')
     when :dstr, :dsym then
-      lit.gsub(/"/, '\"')
+      lit.dump[1..-2]
     when :dxstr then
       lit.gsub(/`/, '\`')
     else

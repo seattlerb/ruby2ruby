@@ -163,6 +163,63 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
+  def assert_str exp, src
+    assert_equal s(:str, exp), RubyParser.new.process(src)
+  end
+
+  def assert_dstr exp, int, src
+    assert_equal s(:dstr, exp, s(:evstr, int).compact), RubyParser.new.process(src)
+  end
+
+  def assert_r2r exp, sexp
+    assert_equal exp, Ruby2Ruby.new.process(sexp)
+  end
+
+  def assert_rt src, exp=src.dup
+    assert_equal exp, Ruby2Ruby.new.process(RubyParser.new.parse(src))
+  end
+
+  def test_bug_033
+    # gentle reminder to keep some sanity
+    #
+    # Use %q("...") for raw input strings
+    # Use %q(...) for raw output to avoid double-\'s
+    # Use %(...) for output strings
+    #
+    # don't use '...' at all
+    # only use  "..." within sexps
+
+    # "\t"
+    assert_str %(\t),     %q("\t")
+    assert_r2r %q("\\t"), s(:str, "\t")
+    assert_rt  %q("\t")
+
+    # "\\t"
+    assert_str %(\t),     %q("\\t")
+    assert_r2r %q("\\t"), s(:str, "\t")
+    assert_rt  %q("\\t")
+
+    # "\\\\t"
+    assert_str %(\\t),      %q("\\\\t")
+    assert_r2r %q("\\\\t"), s(:str, "\\t")
+    assert_rt  %q("\\\\t")
+
+    # "\t#{}"
+    assert_dstr %(\t), nil,  %q("\t#{}")
+    assert_r2r  %q("\t#{}"), s(:dstr, "\t", s(:evstr))
+    assert_rt   %q("\t#{}")
+
+    # "\\t#{}"
+    assert_dstr %(\t), nil,   %q("\\t#{}")
+    assert_r2r  %q("\\t#{}"), s(:dstr, "\t", s(:evstr))
+    assert_rt   %q("\\t#{}")
+
+    # "\\\\t#{}"
+    assert_dstr %(\\t), nil,    %q("\\\\t#{}")
+    assert_r2r  %q("\\\\t#{}"), s(:dstr, "\\t", s(:evstr))
+    assert_rt   %q("\\\\t#{}")
+  end
+
   def test_bug_043
     inn = s(:defn, :check, s(:args),
             s(:rescue,
@@ -608,7 +665,7 @@ class TestRuby2Ruby < R2RTestCase
               s(:str, "m"),
               s(:evstr, s(:call, nil, :message)),
               s(:str, "\e[0m   ")))
-    out = "log_entry = \"  \e[#\{message_color}m#\{message}\e[0m   \""
+    out = "log_entry = \"  \\e[#\{message_color}m#\{message}\\e[0m   \""
 
     assert_parse inn, out
   end
