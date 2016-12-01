@@ -1,3 +1,13 @@
+=== 2.3.2 / 2016-11-30
+
+* 5 bug fixes:
+
+  * FINALLY fixed a problem with escaping in dstrs. (nex3)
+  * Fix using match3 on LHS of call. (eqv)
+  * Fixed handling defn that starts w/ begin+rescue+other stuff. (eqv)
+  * Fixed return expressions with complex RHS. (eqv)
+  * Tweaked sexp_processor dependency to ~> 4.6 to sync them better
+
 === 2.3.1 / 2016-10-09
 
 * 1 minor enhancement:
