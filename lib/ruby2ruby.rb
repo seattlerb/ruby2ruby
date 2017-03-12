@@ -440,7 +440,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_dregx(exp) # :nodoc:
-    options = re_opt exp.pop if Fixnum === exp.last
+    options = re_opt exp.pop if Integer === exp.last
     "/" << util_dthing(:dregx, exp) << "/#{options}"
   end
 
