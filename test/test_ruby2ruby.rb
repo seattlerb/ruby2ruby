@@ -762,6 +762,26 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
+  def test_array_adds_parens_around_rescue
+    inn = s(:array,
+            s(:call, nil, :a),
+            s(:rescue, s(:call, nil, :b), s(:resbody, s(:array), s(:call, nil, :c))))
+    out = "[a, (b rescue c)]"
+
+    util_compare inn, out
+  end
+  
+  def test_call_arglist_rescue
+    inn = s(:call,
+            nil,
+            :method,
+            s(:rescue,
+              s(:call, nil, :a),
+              s(:resbody, s(:array), s(:call, nil, :b))))
+    out = "method((a rescue b))"
+    util_compare inn, out
+  end
+
   def test_unless_vs_if_not
     rb1 = "a unless b"
     rb2 = "a if (not b)"
