@@ -82,7 +82,7 @@ class Ruby2Ruby < SexpProcessor
   def initialize # :nodoc:
     super
     @indent = "  "
-    self.auto_shift_type = true
+    self.require_empty = false
     self.strict = true
     self.expected = String
 
@@ -94,71 +94,72 @@ class Ruby2Ruby < SexpProcessor
   ############################################################
   # Processors
 
-  def process_alias(exp) # :nodoc:
-    parenthesize "alias #{process(exp.shift)} #{process(exp.shift)}"
+  def process_alias exp # :nodoc:
+    _, lhs, rhs = exp
+
+    parenthesize "alias #{process lhs} #{process rhs}"
   end
 
-  def process_and(exp) # :nodoc:
-    parenthesize "#{process exp.shift} and #{process exp.shift}"
+  def process_and exp # :nodoc:
+    _, lhs, rhs = exp
+
+    parenthesize "#{process lhs} and #{process rhs}"
   end
 
-  def process_arglist(exp) # custom made node # :nodoc:
-    code = []
-    until exp.empty? do
-      arg = exp.shift
-      to_wrap = arg.first == :rescue
-      arg_code = process arg
-      code << (to_wrap ? "(#{arg_code})" : arg_code)
-    end
-    code.join ', '
+  def process_arglist exp # custom made node # :nodoc:
+    _, *args = exp
+
+    args.map { |arg|
+      code = process arg
+      arg.sexp_type == :rescue ? "(#{code})" : code
+    }.join ", "
   end
 
-  def process_args(exp) # :nodoc:
-    args = []
+  def process_args exp # :nodoc:
+    _, *args = exp
 
-    until exp.empty? do
-      arg = exp.shift
+    args = args.map { |arg|
       case arg
       when Symbol then
-        args << arg
+        arg
       when Sexp then
-        case arg.first
+        case arg.sexp_type
         when :lasgn then
-          args << process(arg)
+          process(arg)
         when :masgn then
-          args << process(arg)
+          process(arg)
         when :kwarg then
           _, k, v = arg
-          args << "#{k}: #{process v}"
+          "#{k}: #{process v}"
         else
           raise "unknown arg type #{arg.first.inspect}"
         end
       else
         raise "unknown arg type #{arg.inspect}"
       end
-    end
+    }
 
     "(#{args.join ', '})"
   end
 
-  def process_array(exp) # :nodoc:
-    "[#{process_arglist(exp)}]"
+  def process_array exp # :nodoc:
+    "[#{process_arglist exp}]"
   end
 
-  def process_attrasgn(exp) # :nodoc:
-    receiver = process exp.shift
-    name = exp.shift
-    rhs  = exp.pop
-    args = s(:array, *exp)
-    exp.clear
+  def process_attrasgn exp # :nodoc:
+    _, recv, name, *args = exp
+
+    rhs = args.pop
+    args = s(:array, *args)
+    receiver = process recv
 
     case name
     when :[]= then
       args = process args
       "#{receiver}#{args} = #{process rhs}"
     else
-      raise "dunno what to do: #{args.inspect}" unless args.size == 1 # s(:array)
-      name = name.to_s.sub(/=$/, '')
+      raise "dunno what to do: #{args.inspect}" if args.size != 1 # s(:array)
+      name = name.to_s.chomp "="
       if rhs && rhs != s(:arglist) then
         "#{receiver}.#{name} = #{process(rhs)}"
       else
@@ -167,51 +168,54 @@ class Ruby2Ruby < SexpProcessor
     end
   end
 
-  def process_back_ref(exp) # :nodoc:
-    "$#{exp.shift}"
+  def process_back_ref exp # :nodoc:
+    _, n = exp
+
+    "$#{n}"
   end
 
   # TODO: figure out how to do rescue and ensure ENTIRELY w/o begin
-  def process_begin(exp) # :nodoc:
-    code = []
-    code << "begin"
-    until exp.empty?
-      src = process(exp.shift)
-      src = indent(src) unless src =~ /(^|\n)(rescue|ensure)/ # ensure no level 0 rescues
-      code << src
-    end
-    code << "end"
-    return code.join("\n")
+  def process_begin exp # :nodoc:
+    _, *rest = exp
+
+    code = rest.map { |sexp|
+      src = process sexp
+      src = indent src unless src =~  /(^|\n)(rescue|ensure)/ # ensure no level 0 rescues
+      src
+    }
+    code.unshift "begin"
+    code.push "end"
+
+    code.join "\n"
   end
 
-  def process_block(exp) # :nodoc:
-    result = []
+  def process_block exp # :nodoc:
+    _, *body = exp
 
-    exp << nil if exp.empty?
-    until exp.empty? do
-      code = exp.shift
-      if code.nil? or code.first == :nil then
-        result << "# do nothing\n"
-      else
-        result << process(code)
-      end
-    end
+    result = body.map { |sexp|
+      process sexp
+    }
 
+    result << "# do nothing\n" if result.empty?
     result = parenthesize result.join "\n"
     result += "\n" unless result.start_with? "("
 
-    return result
+    result
   end
 
   def process_block_pass exp # :nodoc:
-    raise "huh?: #{exp.inspect}" if exp.size > 1
+    raise "huh?: #{exp.inspect}" if exp.size > 2
 
-    "&#{process exp.shift}"
+    _, sexp = exp
+
+    "&#{process sexp}"
   end
 
-  def process_break(exp) # :nodoc:
-    val = exp.empty? ? nil : process(exp.shift)
-    # HACK "break" + (val ? " #{val}" : "")
+  def process_break exp # :nodoc:
+    _, arg = exp
+
+    val = process arg
+
     if val then
       "break #{val}"
     else
@@ -220,37 +224,39 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_call(exp, safe_call = false) # :nodoc:
-    receiver_node_type = exp.first.nil? ? nil : exp.first.first
-    receiver = process exp.shift
+    _, recv, name, *args = exp
+
+    receiver_node_type = recv && recv.sexp_type
+    receiver = process recv
     receiver = "(#{receiver})" if ASSIGN_NODES.include? receiver_node_type
 
-    name = exp.shift
-    args = []
+    # args = []
 
     # this allows us to do both old and new sexp forms:
-    exp.push(*exp.pop[1..-1]) if exp.size == 1 && exp.first.first == :arglist
+    # exp.push(*exp.pop[1..-1]) if exp.size == 1 && exp.first.first == :arglist
 
     @calls.push name
 
     in_context :arglist do
-      until exp.empty? do
-        arg_type = exp.first.sexp_type
-        is_empty_hash = (exp.first == s(:hash))
-        arg = process exp.shift
+      max = args.size-1
+      args = args.map.with_index { |arg, i|
+        arg_type = arg.sexp_type
+        is_empty_hash = arg == s(:hash)
+        arg = process arg
 
         next if arg.empty?
 
         strip_hash = (arg_type == :hash and
                       not BINARY.include? name and
                       not is_empty_hash and
-                      (exp.empty? or exp.first.sexp_type == :splat))
+                      (i == max or args[i+1].sexp_type == :splat))
         wrap_arg = Ruby2Ruby::ASSIGN_NODES.include? arg_type
 
         arg = arg[2..-3] if strip_hash
         arg = "(#{arg})" if wrap_arg
 
-        args << arg
-      end
+        arg
+      }.compact
     end
 
     case name
@@ -287,126 +293,120 @@ class Ruby2Ruby < SexpProcessor
     @calls.pop
   end
 
-  def process_safe_call(exp) # :nodoc:
-    process_call(exp, :safe)
+  def process_safe_call exp # :nodoc:
+    process_call exp, :safe
   end
 
-  def process_case(exp) # :nodoc:
+  def process_case exp # :nodoc:
+    _, expr, *rest = exp
+
     result = []
-    expr = process exp.shift
+
+    expr = process expr
+
     if expr then
       result << "case #{expr}"
     else
       result << "case"
     end
-    until exp.empty?
-      pt = exp.shift
-      if pt and pt.first == :when
-        result << "#{process(pt)}"
+
+    result.concat rest.map { |pt|
+      if pt and pt.sexp_type == :when
+        "#{process pt}"
       else
-        code = indent(process(pt))
+        code = indent process pt
         code = indent("# do nothing") if code =~ /^\s*$/
-        result << "else\n#{code}"
+        "else\n#{code}"
       end
-    end
+    }
+
     result << "end"
-    result.join("\n")
+
+    result.join "\n"
   end
 
-  def process_cdecl(exp) # :nodoc:
-    lhs = exp.shift
+  def process_cdecl exp # :nodoc:
+    _, lhs, rhs = exp
     lhs = process lhs if Sexp === lhs
-    unless exp.empty? then
-      rhs = process(exp.shift)
+    if rhs then
+      rhs = process rhs
       "#{lhs} = #{rhs}"
     else
       lhs.to_s
     end
   end
 
-  def process_class(exp) # :nodoc:
+  def process_class exp # :nodoc:
     "#{exp.comments}class #{util_module_or_class(exp, true)}"
   end
 
-  def process_colon2(exp) # :nodoc:
-    "#{process(exp.shift)}::#{exp.shift}"
+  def process_colon2 exp # :nodoc:
+    _, lhs, rhs = exp
+
+    "#{process lhs}::#{rhs}"
   end
 
-  def process_colon3(exp) # :nodoc:
-    "::#{exp.shift}"
+  def process_colon3 exp # :nodoc:
+    _, rhs = exp
+
+    "::#{rhs}"
   end
 
-  def process_const(exp) # :nodoc:
-    exp.shift.to_s
+  def process_const exp # :nodoc:
+    _, name = exp
+
+    name.to_s
   end
 
-  def process_cvar(exp) # :nodoc:
-    "#{exp.shift}"
+  def process_cvar exp # :nodoc:
+    _, name = exp
+
+    name.to_s
   end
 
-  def process_cvasgn(exp) # :nodoc:
-    "#{exp.shift} = #{process(exp.shift)}"
+  def process_cvasgn exp # :nodoc:
+    _, lhs, rhs = exp
+
+    "#{lhs} = #{process rhs}"
   end
 
-  def process_cvdecl(exp) # :nodoc:
-    "#{exp.shift} = #{process(exp.shift)}"
+  def process_cvdecl exp # :nodoc:
+    _, lhs, rhs = exp
+
+    "#{lhs} = #{process rhs}"
   end
 
-  def process_defined(exp) # :nodoc:
-    "defined? #{process(exp.shift)}"
+  def process_defined exp # :nodoc:
+    _, rhs = exp
+    "defined? #{process rhs}"
   end
 
   def process_defn(exp) # :nodoc:
-    type1 = exp[1].first
-    type2 = exp[2].first rescue nil
-    expect = [:ivar, :iasgn, :attrset]
-
-    # s(name, args, ivar|iasgn|attrset)
-    if exp.size == 3 and type1 == :args and expect.include? type2 then
-      name = exp.first # don't shift in case we pass through
-      case type2
-      when :ivar then
-        ivar_name = exp.ivar.last
-
-        meth_name = ivar_name.to_s[1..-1].to_sym
-        expected = s(meth_name, s(:args), s(:ivar, ivar_name))
-
-        if exp == expected then
-          exp.clear
-          return "attr_reader #{name.inspect}"
-        end
-      when :attrset then
-        # TODO: deprecate? this is a PT relic
-        exp.clear
-        return "attr_writer :#{name.to_s[0..-2]}"
-      when :iasgn then
-        ivar_name = exp.iasgn[1]
-        meth_name = "#{ivar_name.to_s[1..-1]}=".to_sym
-        arg_name = exp.args.last
-        expected = s(meth_name, s(:args, arg_name),
-                     s(:iasgn, ivar_name, s(:lvar, arg_name)))
-
-        if exp == expected then
-          exp.clear
-          return "attr_writer :#{name.to_s[0..-2]}"
-        end
-      else
-        raise "Unknown defn type: #{exp.inspect}"
-      end
-    end
+    _, name, args, *body = exp
 
     comm = exp.comments
-    name = exp.shift
-    args = process exp.shift
+    args = process args
     args = "" if args == "()"
 
-    exp.shift if exp == s(s(:nil)) # empty it out of a default nil expression
+    body = s() if body == s(s(:nil)) # empty it out of a default nil expression
 
-    # REFACTOR: use process_block but get it happier wrt parenthesize
-    body = []
-    until exp.empty? do
-      body << process(exp.shift)
+    # s(:defn, name, args, ivar|iasgn)
+    case exp
+    when s{ s(:defn, atom, t(:args), s(:ivar, atom)) } then # TODO: atom -> _
+      _, ivar = body.first
+      ivar = ivar.to_s[1..-1] # remove leading @
+      reader = name.to_s
+      return "attr_reader #{name.inspect}" if reader == ivar
+    when s{ s(:defn, atom, t(:args), s(:iasgn, atom, s(:lvar, atom))) } then
+      _, ivar, _val = body.first
+      ivar = ivar.to_s[1..-1] # remove leading @
+      reader = name.to_s.chomp "="
+      return "attr_writer :#{reader}" if reader == ivar
     end
+
+    body = body.map { |ssexp|
+      process ssexp
+    }
 
     simple = body.size <= 1
 
@@ -419,29 +419,36 @@ class Ruby2Ruby < SexpProcessor
     return "#{comm}def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
   end
 
-  def process_defs(exp) # :nodoc:
-    lhs  = exp.shift
-    var = [:self, :cvar, :dvar, :ivar, :gvar, :lvar].include? lhs.first
-    name = exp.shift
+  def process_defs exp # :nodoc:
+    _, lhs, name, args, *body = exp
+    var = [:self, :cvar, :dvar, :ivar, :gvar, :lvar].include? lhs.sexp_type
 
-    lhs = process(lhs)
+    lhs = process lhs
     lhs = "(#{lhs})" unless var
 
-    exp.unshift "#{lhs}.#{name}"
-    process_defn(exp)
+    name = "#{lhs}.#{name}"
+
+    process_defn s(:defn, name, args, *body)
   end
 
   def process_dot2(exp) # :nodoc:
-    "(#{process exp.shift}..#{process exp.shift})"
+    _, lhs, rhs = exp
+
+    "(#{process lhs}..#{process rhs})"
   end
 
   def process_dot3(exp) # :nodoc:
-    "(#{process exp.shift}...#{process exp.shift})"
+    _, lhs, rhs = exp
+
+    "(#{process lhs}...#{process rhs})"
   end
 
-  def process_dregx(exp) # :nodoc:
-    options = re_opt exp.pop if Integer === exp.last
-    "/" << util_dthing(:dregx, exp) << "/#{options}"
+  def process_dregx exp # :nodoc:
+    _, str, *rest = exp
+
+    options = re_opt rest.pop if Integer === rest.last
+
+    "/" << util_dthing(:dregx, s(:dregx, str, *rest)) << "/#{options}"
   end
 
   def process_dregx_once(exp) # :nodoc:
@@ -461,8 +468,9 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_ensure(exp) # :nodoc:
-    body = process exp.shift
-    ens  = exp.shift
+    _, body, ens = exp
+
+    body = process body
     ens  = nil if ens == s(:nil)
     ens  = process(ens) || "# do nothing"
     ens = "begin\n#{ens}\nend\n" if ens =~ /(^|\n)rescue/
@@ -473,80 +481,91 @@ class Ruby2Ruby < SexpProcessor
     return "#{body}\nensure\n#{indent ens}"
   end
 
-  def process_evstr(exp) # :nodoc:
-    exp.empty? ? '' : process(exp.shift)
+  def process_evstr exp # :nodoc:
+    _, x = exp
+
+    x ? process(x) : ""
   end
 
-  def process_false(exp) # :nodoc:
+  def process_false exp # :nodoc:
     "false"
   end
 
-  def process_flip2(exp) # :nodoc:
-    "#{process(exp.shift)}..#{process(exp.shift)}"
+  def process_flip2 exp # :nodoc:
+    _, lhs, rhs = exp
+
+    "#{process lhs}..#{process rhs}"
   end
 
-  def process_flip3(exp) # :nodoc:
-    "#{process(exp.shift)}...#{process(exp.shift)}"
+  def process_flip3 exp # :nodoc:
+    _, lhs, rhs = exp
+
+    "#{process lhs}...#{process rhs}"
   end
 
-  def process_for(exp) # :nodoc:
-    recv = process exp.shift
-    iter = process exp.shift
-    body = exp.empty? ? nil : process(exp.shift)
+  def process_for exp # :nodoc:
+    _, recv, iter, body = exp
+
+    recv = process recv
+    iter = process iter
+    body = process(body) || "# do nothing"
 
     result = ["for #{iter} in #{recv} do"]
-    result << indent(body ? body : "# do nothing")
+    result << indent(body)
     result << "end"
 
-    result.join("\n")
+    result.join "\n"
   end
 
-  def process_gasgn(exp) # :nodoc:
-    process_iasgn(exp)
+  def process_gasgn exp # :nodoc:
+    process_iasgn exp
   end
 
-  def process_gvar(exp) # :nodoc:
-    return exp.shift.to_s
+  def process_gvar exp # :nodoc:
+    _, name = exp
+
+    name.to_s
   end
 
   def process_hash(exp) # :nodoc:
+    _, *pairs = exp
+
     result = []
 
-    until exp.empty?
-      s = exp.shift
-      t = s.sexp_type
-      lhs = process s
-
-      case t
-      when :kwsplat then
-        result << lhs
+    result = pairs.each_slice(2).map { |k, v|
+      if k.sexp_type == :kwsplat then
+        "%s" % process(k)
       else
-        rhs = exp.shift
-        t = rhs.first
-        rhs = process rhs
+        t = v.sexp_type
+
+        lhs = process k
+        rhs = process v
         rhs = "(#{rhs})" unless HASH_VAL_NO_PAREN.include? t
 
-        result << "#{lhs} => #{rhs}"
+        "%s => %s" % [lhs, rhs]
       end
-    end
+    }
 
     return result.empty? ? "{}" : "{ #{result.join(', ')} }"
   end
 
   def process_iasgn(exp) # :nodoc:
-    lhs = exp.shift
-    if exp.empty? then # part of an masgn
+    _, lhs, rhs = exp
+
+    if rhs then
+      "#{lhs} = #{process rhs}"
+    else # part of an masgn
       lhs.to_s
-    else
-      "#{lhs} = #{process exp.shift}"
     end
   end
 
   def process_if(exp) # :nodoc:
-    expand = Ruby2Ruby::ASSIGN_NODES.include? exp.first.first
-    c = process exp.shift
-    t = process exp.shift
-    f = process exp.shift
+    _, c, t, f = exp
+
+    expand = Ruby2Ruby::ASSIGN_NODES.include? c.sexp_type
+    c = process c
+    t = process t
+    f = process f
 
     c = "(#{c.chomp})" if c =~ /\n/
 
@@ -579,9 +598,10 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_iter(exp) # :nodoc:
-    iter = process exp.shift
-    args = exp.shift
-    body = exp.empty? ? nil : process(exp.shift)
+    _, iter, args, body = exp
+
+    iter = process iter
+    body = process body if body
 
     args = case args
            when 0 then
@@ -624,21 +644,25 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_ivar(exp) # :nodoc:
-    exp.shift.to_s
+    _, name = exp
+    name.to_s
   end
 
   def process_kwsplat(exp)
-    "**#{process exp.shift}"
+    _, kw = exp
+    "**#{process kw}"
   end
 
   def process_lasgn(exp) # :nodoc:
-    s = "#{exp.shift}"
-    s += " = #{process exp.shift}" unless exp.empty?
+    _, name, value = exp
+
+    s = "#{name}"
+    s += " = #{process value}" if value
     s
   end
 
-  def process_lit(exp) # :nodoc:
-    obj = exp.shift
+  def process_lit exp # :nodoc:
+    _, obj = exp
     case obj
     when Range then
       "(#{obj.inspect})"
@@ -648,23 +672,25 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_lvar(exp) # :nodoc:
-    exp.shift.to_s
+    _, name = exp
+    name.to_s
   end
 
   def process_masgn(exp) # :nodoc:
     # s(:masgn, s(:array, s(:lasgn, :var), ...), s(:to_ary, <val>, ...))
     # s(:iter, <call>, s(:args, s(:masgn, :a, :b)), <body>)
 
+    _, *exp = exp # HACK
+
     case exp.first
     when Sexp then
-      lhs = exp.shift
-      rhs = exp.empty? ? nil : exp.shift
+      lhs, rhs = exp
 
-      case lhs.first
+      case lhs.sexp_type
       when :array then
-        lhs.shift # node type
+        _, *lhs = lhs # HACK
         lhs = lhs.map do |l|
-          case l.first
+          case l.sexp_type
           when :masgn then
             "(#{process(l)})"
           else
@@ -675,8 +701,8 @@ class Ruby2Ruby < SexpProcessor
         raise "no clue: #{lhs.inspect}"
       end
 
-      unless rhs.nil? then
-        t = rhs.first
+      if rhs then
+        t = rhs.sexp_type
         rhs = process rhs
         rhs = rhs[1..-2] if t == :array # FIX: bad? I dunno
         return "#{lhs.join(", ")} = #{rhs}"
@@ -692,20 +718,28 @@ class Ruby2Ruby < SexpProcessor
     end
   end
 
-  def process_match(exp) # :nodoc:
-    "#{process(exp.shift)}"
+  def process_match exp # :nodoc:
+    _, rhs = exp
+
+    "#{process rhs}"
   end
 
-  def process_match2(exp) # :nodoc:
-    lhs = process(exp.shift)
-    rhs = process(exp.shift)
+  def process_match2 exp # :nodoc:
+    # s(:match2, s(:lit, /x/), s(:str, "blah"))
+    _, lhs, rhs = exp
+
+    lhs = process lhs
+    rhs = process rhs
+
     "#{lhs} =~ #{rhs}"
   end
 
-  def process_match3(exp) # :nodoc:
-    rhs = process(exp.shift)
-    left_type = exp.first.sexp_type
-    lhs = process(exp.shift)
+  def process_match3 exp # :nodoc:
+    _, rhs, lhs = exp # yes, backwards
+
+    left_type = lhs.sexp_type
+    lhs = process lhs
+    rhs = process rhs
 
     if ASSIGN_NODES.include? left_type then
       "(#{lhs}) =~ #{rhs}"
@@ -719,7 +753,9 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_next(exp) # :nodoc:
-    val = exp.empty? ? nil : process(exp.shift)
+    _, rhs = exp
+
+    val = rhs && process(rhs) # maybe push down into if and test rhs?
     if val then
       "next #{val}"
     else
@@ -732,40 +768,43 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_not(exp) # :nodoc:
-    "(not #{process exp.shift})"
+    _, sexp = exp
+    "(not #{process sexp})"
   end
 
   def process_nth_ref(exp) # :nodoc:
-    "$#{exp.shift}"
+    _, n = exp
+    "$#{n}"
   end
 
-  def process_op_asgn(exp) # :nodoc:
+  def process_op_asgn exp # :nodoc:
     # [[:lvar, :x], [:call, nil, :z, [:lit, 1]], :y, :"||"]
-    lhs = process(exp.shift)
-    rhs = process(exp.shift)
-    index = exp.shift
-    op = exp.shift
+    _, lhs, rhs, index, op = exp
+
+    lhs = process lhs
+    rhs = process rhs
 
     "#{lhs}.#{index} #{op}= #{rhs}"
   end
 
   def process_op_asgn1(exp) # :nodoc:
     # [[:lvar, :b], [:arglist, [:lit, 1]], :"||", [:lit, 10]]
-    lhs = process(exp.shift)
-    index = process(exp.shift)
-    msg = exp.shift
-    rhs = process(exp.shift)
+    _, lhs, index, msg, rhs = exp
+
+    lhs   = process lhs
+    index = process index
+    rhs   = process rhs
 
     "#{lhs}[#{index}] #{msg}= #{rhs}"
   end
 
-  def process_op_asgn2(exp) # :nodoc:
+  def process_op_asgn2 exp # :nodoc:
     # [[:lvar, :c], :var=, :"||", [:lit, 20]]
-    lhs = process(exp.shift)
-    index = exp.shift.to_s[0..-2]
-    msg = exp.shift
+    _, lhs, index, msg, rhs = exp
 
-    rhs = process(exp.shift)
+    lhs   = process lhs
+    index = index.to_s[0..-2]
+    rhs   = process rhs
 
     "#{lhs}.#{index} #{msg}= #{rhs}"
   end
@@ -773,19 +812,21 @@ class Ruby2Ruby < SexpProcessor
   def process_op_asgn_and(exp) # :nodoc:
     # a &&= 1
     # [[:lvar, :a], [:lasgn, :a, [:lit, 1]]]
-    exp.shift
-    process(exp.shift).sub(/\=/, '&&=')
+    _, _lhs, rhs = exp
+    process(rhs).sub(/\=/, '&&=')
   end
 
   def process_op_asgn_or(exp) # :nodoc:
     # a ||= 1
     # [[:lvar, :a], [:lasgn, :a, [:lit, 1]]]
-    exp.shift
-    process(exp.shift).sub(/\=/, '||=')
+    _, _lhs, rhs = exp
+    process(rhs).sub(/\=/, '||=')
   end
 
   def process_or(exp) # :nodoc:
-    "(#{process exp.shift} or #{process exp.shift})"
+    _, lhs, rhs = exp
+
+    "(#{process lhs} or #{process rhs})"
   end
 
   def process_postexe(exp) # :nodoc:
@@ -797,8 +838,13 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_resbody exp # :nodoc:
-    args = exp.shift
-    body = finish(exp)
+    # s(:resbody, s(:array), s(:return, s(:str, "a")))
+    _, args, *body = exp
+
+    body = body.compact.map { |sexp|
+      process sexp
+    }
+
     body << "# do nothing" if body.empty?
 
     name =   args.lasgn true
@@ -811,21 +857,24 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_rescue exp # :nodoc:
-    body = process(exp.shift) unless exp.first.first == :resbody
-    els  = process(exp.pop)   unless exp.last.first  == :resbody
+    _, *rest = exp
+    exp = nil
+
+    body = process rest.shift unless rest.first.sexp_type == :resbody
+    els  = process rest.pop   unless rest.last && rest.last.sexp_type  == :resbody
 
     body ||= "# do nothing"
-    simple = exp.size == 1 && exp.resbody.size <= 3 &&
-      !exp.resbody.block &&
-      !exp.resbody.return
 
-    resbodies = []
-    until exp.empty? do
-      resbody = exp.shift
+    # TODO: I don't like this using method_missing, but I need to ensure tests
+    simple = rest.size == 1 && rest.first.size <= 3 &&
+      !rest.first.block &&
+      !rest.first.return
+
+    resbodies = rest.map { |resbody|
       simple &&= resbody[1] == s(:array)
       simple &&= resbody[2] != nil && resbody[2].node_type != :block
-      resbodies << process(resbody)
-    end
+      process resbody
+    }
 
     if els then
       "#{indent body}\n#{resbodies.join("\n")}\nelse\n#{indent els}"
@@ -841,11 +890,12 @@ class Ruby2Ruby < SexpProcessor
     "retry"
   end
 
-  def process_return(exp) # :nodoc:
-    if exp.empty? then
+  def process_return exp # :nodoc:
+    _, rhs = exp
+
+    unless rhs then
       "return"
     else
-      rhs = exp.shift
       rhs_type = rhs.sexp_type
       rhs = process rhs
       rhs = "(#{rhs})" if ASSIGN_NODES.include? rhs_type
@@ -853,47 +903,53 @@ class Ruby2Ruby < SexpProcessor
     end
   end
 
-  def process_safe_attrasgn(exp) # :nodoc:
-    receiver = process exp.shift
-    name = exp.shift
-    rhs  = exp.pop
-    args = exp.pop # should be nil
-    exp.clear
+  def process_safe_attrasgn exp # :nodoc:
+    _, receiver, name, *rest = exp
+
+    receiver = process receiver
+    rhs  = rest.pop
+    args = rest.pop # should be nil
 
     raise "dunno what to do: #{args.inspect}" if args
 
     name = name.to_s.sub(/=$/, '')
 
     if rhs && rhs != s(:arglist) then
-      "#{receiver}&.#{name} = #{process(rhs)}"
+      "#{receiver}&.#{name} = #{process rhs}"
     else
       raise "dunno what to do: #{rhs.inspect}"
     end
   end
 
-  def process_safe_op_asgn(exp) # :nodoc:
+  def process_safe_op_asgn exp # :nodoc:
     # [[:lvar, :x], [:call, nil, :z, [:lit, 1]], :y, :"||"]
-    lhs = process(exp.shift)
-    rhs = process(exp.shift)
-    index = exp.shift
-    op = exp.shift
+    _, lhs, rhs, index, op = exp
+
+    lhs = process lhs
+    rhs = process rhs
 
     "#{lhs}&.#{index} #{op}= #{rhs}"
   end
 
   def process_safe_op_asgn2(exp) # :nodoc:
     # [[:lvar, :c], :var=, :"||", [:lit, 20]]
-    lhs = process(exp.shift)
-    index = exp.shift.to_s[0..-2]
-    msg = exp.shift
 
-    rhs = process(exp.shift)
+    _, lhs, index, msg, rhs = exp
+
+    lhs   = process lhs
+    index = index.to_s[0..-2]
+    rhs   = process rhs
 
     "#{lhs}&.#{index} #{msg}= #{rhs}"
   end
 
   def process_sclass(exp) # :nodoc:
-    "class << #{process(exp.shift)}\n#{indent(process_block(exp))}\nend"
+    _, recv, *block = exp
+
+    recv = process recv
+    block = indent process_block s(:block, *block)
+
+    "class << #{recv}\n#{block}\nend"
   end
 
   def process_self(exp) # :nodoc:
@@ -901,33 +957,41 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_splat(exp) # :nodoc:
-    if exp.empty? then
+    _, arg = exp
+    if arg.nil? then
       "*"
     else
-      "*#{process(exp.shift)}"
+      "*#{process arg}"
     end
   end
 
   def process_str(exp) # :nodoc:
-    return exp.shift.dump
+    _, s = exp
+    s.dump
   end
 
   def process_super(exp) # :nodoc:
-    args = finish exp
+    _, *args = exp
 
-    "super(#{args.join(', ')})"
+    args = args.map { |arg|
+      process arg
+    }
+
+    "super(#{args.join ", "})"
   end
 
   def process_svalue(exp) # :nodoc:
-    code = []
-    until exp.empty? do
-      code << process(exp.shift)
-    end
-    code.join(", ")
+    _, *args = exp
+
+    args.map { |arg|
+      process arg
+    }.join ", "
   end
 
-  def process_to_ary(exp) # :nodoc:
-    process(exp.shift)
+  def process_to_ary exp # :nodoc:
+    _, sexp = exp
+
+    process sexp
   end
 
   def process_true(exp) # :nodoc:
@@ -935,38 +999,42 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_undef(exp) # :nodoc:
-    "undef #{process(exp.shift)}"
+    _, name = exp
+
+    "undef #{process name}"
   end
 
   def process_until(exp) # :nodoc:
     cond_loop(exp, 'until')
   end
 
-  def process_valias(exp) # :nodoc:
-    "alias #{exp.shift} #{exp.shift}"
+  def process_valias exp # :nodoc:
+    _, lhs, rhs = exp
+
+    "alias #{lhs} #{rhs}"
   end
 
-  def process_when(exp) # :nodoc:
-    src = []
+  def process_when exp # :nodoc:
+    s(:when, s(:array, s(:lit, 1)),
+      s(:call, nil, :puts, s(:str, "something")),
+      s(:lasgn, :result, s(:str, "red")))
 
-    if self.context[1] == :array then # ugh. matz! why not an argscat?!?
-      val = process(exp.shift)
-      exp.shift # empty body
-      return "*#{val}"
-    end
+    _, lhs, *rhs = exp
 
-    until exp.empty?
-      cond = process(exp.shift).to_s[1..-2]
-      code = indent(finish(exp).join("\n"))
-      code = indent "# do nothing" if code =~ /\A\s*\Z/
-      src << "when #{cond} then\n#{code.chomp}"
-    end
+    cond = process(lhs)[1..-2]
 
-    src.join("\n")
+    rhs = rhs.compact.map { |sexp|
+      indent process sexp
+    }
+
+    rhs << indent("# do nothing") if rhs.empty?
+    rhs = rhs.join "\n"
+
+    "when #{cond} then\n#{rhs.chomp}"
   end
 
   def process_while(exp) # :nodoc:
-    cond_loop(exp, 'while')
+    cond_loop exp, "while"
   end
 
   def process_xstr(exp) # :nodoc:
@@ -974,10 +1042,11 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_yield(exp) # :nodoc:
-    args = []
-    until exp.empty? do
-      args << process(exp.shift)
-    end
+    _, *args = exp
+
+    args = args.map { |arg|
+      process arg
+    }
 
     unless args.empty? then
       "yield(#{args.join(', ')})"
@@ -995,8 +1064,9 @@ class Ruby2Ruby < SexpProcessor
 
   def rewrite_attrasgn exp # :nodoc:
     if context.first(2) == [:array, :masgn] then
-      exp[0] = :call
-      exp[2] = exp[2].to_s.sub(/=$/, '').to_sym
+      _, recv, msg, *args = exp
+
+      exp = s(:call, recv, msg.to_s.chomp("=").to_sym, *args)
     end
 
     exp
@@ -1009,7 +1079,7 @@ class Ruby2Ruby < SexpProcessor
 
   def rewrite_resbody exp # :nodoc:
     raise "no exception list in #{exp.inspect}" unless exp.size > 2 && exp[1]
-    raise exp[1].inspect if exp[1][0] != :array
+    raise exp[1].inspect if exp[1].sexp_type != :array
     # for now, do nothing, just check and freak if we see an errant structure
     exp
   end
@@ -1031,9 +1101,9 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def rewrite_svalue(exp) # :nodoc:
-    case exp.last.first
+    case exp.last.sexp_type
     when :array
-      s(:svalue, *exp[1][1..-1])
+      s(:svalue, *exp[1].sexp_body)
     when :splat
       exp
     else
@@ -1048,9 +1118,10 @@ class Ruby2Ruby < SexpProcessor
   # Generate a post-or-pre conditional loop.
 
   def cond_loop(exp, name)
-    cond = process(exp.shift)
-    body = process(exp.shift)
-    head_controlled = exp.shift
+    _, cond, body, head_controlled = exp
+
+    cond = process cond
+    body = process body
 
     body = indent(body).chomp if body
 
@@ -1064,6 +1135,7 @@ class Ruby2Ruby < SexpProcessor
       code << body if body
       code << "end #{name} #{cond}"
     end
+
     code.join("\n")
   end
 
@@ -1085,21 +1157,9 @@ class Ruby2Ruby < SexpProcessor
   end
 
   ##
-  # Process all the remaining stuff in +exp+ and return the results
-  # sans-nils.
-
-  def finish exp # REFACTOR: work this out of the rest of the processors
-    body = []
-    until exp.empty? do
-      body << process(exp.shift)
-    end
-    body.compact
-  end
-
-  ##
   # Indent all lines of +s+ to the current indent level.
 
-  def indent(s)
+  def indent s
     s.to_s.split(/\n/).map{|line| @indent + line}.join("\n")
   end
 
@@ -1135,29 +1195,28 @@ class Ruby2Ruby < SexpProcessor
   # Utility method to generate something interpolated.
 
   def util_dthing(type, exp)
-    s = []
+    _, str, *rest = exp
 
     # first item in sexp is a string literal
-    s << dthing_escape(type, exp.shift)
+    str = dthing_escape(type, str)
 
-    until exp.empty?
-      pt = exp.shift
+    rest = rest.map { |pt|
       case pt
-      when Sexp then
-        case pt.first
+      when Sexp then # TODO: what the fuck? why??
+        case pt.sexp_type
         when :str then
-          s << dthing_escape(type, pt.last)
+          dthing_escape(type, pt.last)
         when :evstr then
-          s << '#{' << process(pt) << '}' # do not use interpolation here
+          '#{%s}' % [process(pt)]
         else
           raise "unknown type: #{pt.inspect}"
         end
       else
         raise "unhandled value in d-thing: #{pt.inspect}"
       end
-    end
+    }
 
-    s.join
+    [str, rest].join
   end
 
   ##
@@ -1166,29 +1225,30 @@ class Ruby2Ruby < SexpProcessor
   def util_module_or_class(exp, is_class=false)
     result = []
 
-    name = exp.shift
+    _, name, *body = exp
+    superk = body.shift if is_class
+
     name = process name if Sexp === name
 
     result << name
 
-    if is_class then
-      superk = process(exp.shift)
+    if superk then
+      superk = process superk
       result << " < #{superk}" if superk
     end
 
     result << "\n"
 
-    body = []
-    begin
-      code = process(exp.shift) unless exp.empty?
-      body << code.chomp unless code.nil? or code.chomp.empty?
-    end until exp.empty?
+    body = body.map { |sexp|
+      process(sexp).chomp
+    }
 
     unless body.empty? then
       body = indent(body.join("\n\n")) + "\n"
     else
       body = ""
     end
+
     result << body
     result << "end"
 

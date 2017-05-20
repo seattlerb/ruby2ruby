@@ -50,7 +50,6 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_util_dthing_dregx
     inn = util_thingy(:dregx)
-    inn.shift
     out = '/a"b#{(1 + 1)}c"d\/e/'
     exp = /a"b2c"d\/e/
 
@@ -61,7 +60,6 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_util_dthing_dstr
     inn = util_thingy(:dstr)
-    inn.shift
     out = '"a\"b#{(1 + 1)}c\"d/e"'
     exp = 'a"b2c"d/e'
 
@@ -72,7 +70,6 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_util_dthing_dregx_bug?
     inn = s(:dregx, '[\/\"]', s(:evstr, s(:lit, 42)))
-    inn.shift
     out = '/[\/\"]#{42}/'
     exp =  /[\/\"]42/
 
