@@ -9,6 +9,7 @@ Hoe.add_include_dirs("lib",
 
 Hoe.plugin :seattlerb
 Hoe.plugin :isolate
+Hoe.plugin :rdoc
 
 Hoe.spec 'ruby2ruby' do
   developer 'Ryan Davis', 'ryand-ruby@zenspider.com'
