@@ -1,3 +1,18 @@
+=== 2.4.0 / 2017-07-17
+
+* 1 major enhancement:
+
+  * Major overhaul. Process methods no longer mutate arguments.
+
+* 1 minor enhancement:
+
+  * Now SEXP_STRICT=1 clean.
+
+* 2 bug fixes:
+
+  * Fixed 2.4 Fixnum deprecation warning
+  * Fixed for new 24 parser.
+
 === 2.3.2 / 2016-11-30
 
 * 5 bug fixes:
