@@ -871,8 +871,9 @@ class Ruby2Ruby < SexpProcessor
       !rest.first.return
 
     resbodies = rest.map { |resbody|
-      simple &&= resbody[1] == s(:array)
-      simple &&= resbody[2] != nil && resbody[2].node_type != :block
+      _, rb_args, rb_body, *rb_rest = resbody
+      simple &&= rb_args == s(:array)
+      simple &&= rb_rest.empty? && rb_body && rb_body.node_type != :block
       process resbody
     }
 
@@ -1078,8 +1079,9 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def rewrite_resbody exp # :nodoc:
-    raise "no exception list in #{exp.inspect}" unless exp.size > 2 && exp[1]
-    raise exp[1].inspect if exp[1].sexp_type != :array
+    _, args, *_rest = exp
+    raise "no exception list in #{exp.inspect}" unless exp.size > 2 && args
+    raise args.inspect if args.sexp_type != :array
     # for now, do nothing, just check and freak if we see an errant structure
     exp
   end
@@ -1089,9 +1091,10 @@ class Ruby2Ruby < SexpProcessor
     complex ||= exp.size > 3
     complex ||= exp.resbody.block
     complex ||= exp.resbody.size > 3
-    complex ||= exp.find_nodes(:resbody).any? { |n| n[1] != s(:array) }
-    complex ||= exp.find_nodes(:resbody).any? { |n| n.last.nil? }
-    complex ||= exp.find_nodes(:resbody).any? { |n| n[2] and n[2].node_type == :block }
+    resbodies = exp.find_nodes(:resbody)
+    complex ||= resbodies.any? { |n| n[1] != s(:array) }
+    complex ||= resbodies.any? { |n| n.last.nil? }
+    complex ||= resbodies.any? { |(_, _, body)| body and body.node_type == :block }
 
     handled = context.first == :ensure
 
