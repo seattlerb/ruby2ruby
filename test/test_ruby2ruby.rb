@@ -126,40 +126,6 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
-  def test_attr_reader_diff
-    inn = s(:defn, :same, s(:args), s(:ivar, :@diff))
-    out = "def same\n  @diff\nend"
-    assert_parse inn, out
-  end
-
-  def test_attr_reader_same
-    do_not_check_sexp!
-
-    inn = s(:defn, :same, s(:args), s(:ivar, :@same))
-    out = "attr_reader :same"
-    assert_parse inn, out
-  end
-
-  def test_attr_reader_double
-    inn = s(:defn, :same, s(:args), s(:ivar, :@same), s(:ivar, :@diff))
-    out = "def same\n  @same\n  @diff\nend"
-    assert_parse inn, out
-  end
-
-  def test_attr_reader_same_name_diff_body
-    do_not_check_sexp!
-
-    inn = s(:defn, :same, s(:args), s(:not, s(:ivar, :@same)))
-    out = "def same\n  (not @same)\nend"
-    assert_parse inn, out
-  end
-
-  def test_attr_writer_diff
-    inn = s(:defn, :same=, s(:args, :o), s(:iasgn, :@diff, s(:lvar, :o)))
-    out = "def same=(o)\n  @diff = o\nend"
-    assert_parse inn, out
-  end
-
   def assert_str exp, src
     assert_equal s(:str, exp), RubyParser.new.process(src)
   end
@@ -257,27 +223,6 @@ class TestRuby2Ruby < R2RTestCase
 
     out = "return (if foo.baaaaaaar then\n  ::B.newsss(true)\nelse\n  ::B.newadsfasdfasdfasdfasdsssss(false)\nend)"
 
-    assert_parse inn, out
-  end
-
-  def test_attr_writer_double
-    inn = s(:defn, :same=, s(:args, :o),
-            s(:iasgn, :@same, s(:lvar, :o)), s(:iasgn, :@diff, s(:lvar, :o)))
-    out = "def same=(o)\n  @same = o\n  @diff = o\nend"
-    assert_parse inn, out
-  end
-
-  def test_attr_writer_same_name_diff_body
-    inn = s(:defn, :same=, s(:args, :o), s(:iasgn, :@same, s(:lit, 42)))
-    out = "def same=(o)\n  @same = 42\nend"
-    assert_parse inn, out
-  end
-
-  def test_attr_writer_same
-    do_not_check_sexp!
-
-    inn = s(:defn, :same=, s(:args, :o), s(:iasgn, :@same , s(:lvar, :o)))
-    out = "attr_writer :same"
     assert_parse inn, out
   end
 
