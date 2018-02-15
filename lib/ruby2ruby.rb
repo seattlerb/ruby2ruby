@@ -1073,8 +1073,27 @@ class Ruby2Ruby < SexpProcessor
     exp
   end
 
+  def rewrite_call exp # :nodoc:
+    _, recv, msg, *args = exp
+
+    exp = s(:not, recv) if msg == :! && args.empty?
+
+    exp
+  end
+
   def rewrite_ensure exp # :nodoc:
     exp = s(:begin, exp) unless context.first == :begin
+    exp
+  end
+
+  def rewrite_if exp # :nodoc:
+    _, c, t, f = exp
+
+    if c.sexp_type == :not then
+      _, nc = c
+      exp = s(:if, nc, f, t)
+    end
+
     exp
   end
 
@@ -1112,6 +1131,28 @@ class Ruby2Ruby < SexpProcessor
     else
       raise "huh: #{exp.inspect}"
     end
+  end
+
+  def rewrite_until exp # :nodoc:
+    _, c, *body = exp
+
+    if c.sexp_type == :not then
+      _, nc = c
+      exp = s(:while, nc, *body)
+    end
+
+    exp
+  end
+
+  def rewrite_while exp # :nodoc:
+    _, c, *body = exp
+
+    if c.sexp_type == :not then
+      _, nc = c
+      exp = s(:until, nc, *body)
+    end
+
+    exp
   end
 
   ############################################################

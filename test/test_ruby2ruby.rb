@@ -19,8 +19,6 @@ class R2RTestCase < ParseTreeTestCase
   def self.generate_test klass, node, data, input_name, output_name
     output_name = data.has_key?('Ruby2Ruby') ? 'Ruby2Ruby' : 'Ruby'
 
-    return if node.to_s =~ /(str_question|not|bang).*_(19|20|21|22|23|24)$/
-
     klass.class_eval <<-EOM
       def test_#{node}
         pt = #{data[input_name].inspect}
@@ -766,12 +764,15 @@ class TestRuby2Ruby < R2RTestCase
 
     assert_parse Ruby18Parser.new.parse(rb1), rb1
     assert_parse Ruby19Parser.new.parse(rb1), rb1
+    assert_parse Ruby25Parser.new.parse(rb1), rb1
 
     assert_parse Ruby18Parser.new.parse(rb2), rb1
-    assert_parse Ruby19Parser.new.parse(rb2), rb2
+    assert_parse Ruby19Parser.new.parse(rb2), rb1
+    assert_parse Ruby25Parser.new.parse(rb2), rb1
 
     assert_parse Ruby18Parser.new.parse(rb3), rb1
-    assert_parse Ruby19Parser.new.parse(rb3), rb2
+    assert_parse Ruby19Parser.new.parse(rb3), rb1
+    assert_parse Ruby25Parser.new.parse(rb3), rb1
   end
 
   def assert_parse sexp, expected_ruby, expected_eval = nil
