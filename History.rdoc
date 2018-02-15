@@ -1,3 +1,10 @@
+=== 2.4.1 / 2018-02-15
+
+* 2 minor enhancements:
+
+  * Added bitwise ops to BINARY. (david942j)
+  * Added rewrite_call|if|until|while to normalize `not` in conditions.
+
 === 2.4.0 / 2017-07-17
 
 * 1 major enhancement:
