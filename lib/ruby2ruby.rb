@@ -697,6 +697,8 @@ class Ruby2Ruby < SexpProcessor
             process(l)
           end
         end
+      when :masgn
+        lhs = ["(#{process(lhs)})"]
       else
         raise "no clue: #{lhs.inspect}"
       end
@@ -710,7 +712,13 @@ class Ruby2Ruby < SexpProcessor
         return lhs.join(", ")
       end
     when Symbol then # block arg list w/ masgn
-      result = exp.join ", "
+      result = exp.map { |arg|
+        if arg && Sexp === arg then
+          process arg
+        else
+          arg
+        end
+      }.join ", "
       exp.clear
       "(#{result})"
     else
