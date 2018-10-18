@@ -116,21 +116,24 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_args exp # :nodoc:
-    _, *args = exp
+    _, *rest = exp
 
-    args = args.map { |arg|
+    args = []
+    shadow = []
+
+    rest.each { |arg|
       case arg
       when Symbol then
-        arg
+        args << arg
       when Sexp then
         case arg.sexp_type
-        when :lasgn then
-          process(arg)
-        when :masgn then
-          process(arg)
+        when :lasgn, :masgn then
+          args << process(arg)
         when :kwarg then
           _, k, v = arg
-          "#{k}: #{process v}"
+          args << "#{k}: #{process v}"
+        when :shadow then
+          shadow << arg[1]
         else
           raise "unknown arg type #{arg.first.inspect}"
         end
@@ -139,7 +142,7 @@ class Ruby2Ruby < SexpProcessor
       end
     }
 
-    "(#{args.join ', '})"
+    "(#{args.join ', '}#{'; ' unless shadow.empty?}#{shadow.join ', '})"
   end
 
   def process_array exp # :nodoc:
