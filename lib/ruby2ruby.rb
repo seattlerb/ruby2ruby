@@ -679,51 +679,28 @@ class Ruby2Ruby < SexpProcessor
   def process_masgn(exp) # :nodoc:
     # s(:masgn, s(:array, s(:lasgn, :var), ...), s(:to_ary, <val>, ...))
     # s(:iter, <call>, s(:args, s(:masgn, :a, :b)), <body>)
+    parenthesize = true
 
-    _, *exp = exp # HACK
-
-    case exp.first
-    when Sexp then
-      lhs, rhs = exp
-
-      case lhs.sexp_type
-      when :array then
-        _, *lhs = lhs # HACK
-        lhs = lhs.map do |l|
-          case l.sexp_type
-          when :masgn then
-            "(#{process(l)})"
-          else
-            process(l)
-          end
-        end
-      when :masgn
-        lhs = ["(#{process(lhs)})"]
-      else
-        raise "no clue: #{lhs.inspect}"
-      end
-
-      if rhs then
-        t = rhs.sexp_type
-        rhs = process rhs
-        rhs = rhs[1..-2] if t == :array # FIX: bad? I dunno
-        return "#{lhs.join(", ")} = #{rhs}"
-      else
-        return lhs.join(", ")
-      end
-    when Symbol then # block arg list w/ masgn
-      result = exp.map { |arg|
-        if arg && Sexp === arg then
-          process arg
+    result = exp.sexp_body.map { |arg|
+      case arg
+      when Sexp then
+        if arg.sexp_type == :array then
+          @masgn_array_depth ||= 0
+          parenthesize = @masgn_array_depth > 0
+          @masgn_array_depth += 1
+          res = process arg
+          @masgn_array_depth -= 1
+          res[1..-2]
         else
-          arg
+          process arg
         end
-      }.join ", "
-      exp.clear
-      "(#{result})"
-    else
-      raise "unknown masgn: #{exp.inspect}"
-    end
+      when Symbol then
+        arg
+      else
+        raise "unknown masgn: #{arg.inspect}"
+      end
+    }
+    parenthesize ? "(#{result.join ', '})" : result.join(' = ')
   end
 
   def process_match exp # :nodoc:

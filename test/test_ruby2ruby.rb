@@ -450,10 +450,12 @@ class TestRuby2Ruby < R2RTestCase
   def test_multiple_nested_masgn_block_arg
     inn = s(:iter,
             s(:call, nil, :a),
-            s(:args,
-              s(:masgn, :b, :c,
-                s(:masgn, :d, :e))))
-    out = 'a { |(b, c, (d, e))| }'
+            s(:args, :b,
+              s(:masgn,
+                s(:masgn, :c, :d),
+                :e,
+                s(:masgn, :f, :g))))
+    out = 'a { |b, ((c, d), e, (f, g))| }'
 
     assert_parse inn, out
   end
