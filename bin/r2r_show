@@ -18,7 +18,7 @@ end
 
 ARGV.push "-" if ARGV.empty?
 
-parser    = Ruby18Parser.new
+parser    = RubyParser.new
 ruby2ruby = Ruby2Ruby.new
 
 ARGV.each do |file|
@@ -30,4 +30,3 @@ ARGV.each do |file|
 
   puts ruby2ruby.process(sexp)
 end
-

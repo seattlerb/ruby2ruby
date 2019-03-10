@@ -680,41 +680,42 @@ class Ruby2Ruby < SexpProcessor
     # s(:masgn, s(:array, s(:lasgn, :var), ...), s(:to_ary, <val>, ...))
     # s(:iter, <call>, s(:args, s(:masgn, :a, :b)), <body>)
 
-    _, *exp = exp # HACK
+    x = exp.sexp_body.first
 
-    case exp.first
-    when Sexp then
-      lhs, rhs = exp
+    if Sexp === x && x.sexp_type == :array then
+      _, lhs, rhs = exp
 
-      case lhs.sexp_type
-      when :array then
-        _, *lhs = lhs # HACK
-        lhs = lhs.map do |l|
-          case l.sexp_type
-          when :masgn then
-            "(#{process(l)})"
-          else
-            process(l)
-          end
+      case exp.length
+      when 3 then               # a, b = c, d
+        lhs = lhs.sexp_body.map { |e|
+          process e
+        }
+
+        rhs = case rhs && rhs.sexp_type
+              when :array then  # a, b = [c, d]
+                process(rhs)[1..-2]
+              else              # a, b = c
+                process rhs
+              end
+        "%s = %s" % [lhs.join(", "), rhs]
+      when 2 then               # a, (b, c) = ...
+        "(%s)" % [process(lhs)[1..-2]]
+      else
+        raise "unknown masgn length: %p" % [exp]
+      end
+    else                        # a { |(b, c)| ... }
+      lhs = exp.sexp_body.map { |e|
+        case e
+        when Symbol then
+          e
+        when Sexp then
+          process e
+        else
+          raise "unknown masgn type: %p" % [e]
         end
-      else
-        raise "no clue: #{lhs.inspect}"
-      end
+      }
 
-      if rhs then
-        t = rhs.sexp_type
-        rhs = process rhs
-        rhs = rhs[1..-2] if t == :array # FIX: bad? I dunno
-        return "#{lhs.join(", ")} = #{rhs}"
-      else
-        return lhs.join(", ")
-      end
-    when Symbol then # block arg list w/ masgn
-      result = exp.join ", "
-      exp.clear
-      "(#{result})"
-    else
-      raise "unknown masgn: #{exp.inspect}"
+      "(%s)" % [lhs.join(", ")]
     end
   end
 

@@ -258,6 +258,29 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
+  def assert_masgn exp, *args
+    inn = s(:iter, s(:call, nil, :a), s(:args, *args))
+    out = "a { |#{exp}| }"
+    assert_parse inn, out
+  end
+
+  def test_iter_masgn_double_bug
+    assert_masgn("b",
+                 :b)
+    assert_masgn("b, c",
+                 :b, :c)
+    assert_masgn("(b, c)",
+                 s(:masgn, :b, :c))
+    assert_masgn("(b, c), d",
+                 s(:masgn, :b, :c), :d)
+    assert_masgn("b, (c, d), e",
+                 :b, s(:masgn, :c, :d), :e)
+    assert_masgn("(b, (c, d), e), f",
+                 s(:masgn, :b, s(:masgn, :c, :d), :e), :f)
+    assert_masgn("(((b, c), d, e), f), g",
+                 s(:masgn, s(:masgn, s(:masgn, :b, :c), :d, :e), :f), :g)
+  end
+
   def test_attr_writer_double
     inn = s(:defn, :same=, s(:args, :o),
             s(:iasgn, :@same, s(:lvar, :o)), s(:iasgn, :@diff, s(:lvar, :o)))

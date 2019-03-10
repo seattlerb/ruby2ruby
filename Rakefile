@@ -30,6 +30,8 @@ def process ruby, file="stdin"
   begin
     sexp = parser.process(ruby, file)
 
+    pp sexp if ENV["SEXP"]
+
     ruby2ruby.process(sexp)
   rescue Interrupt => e
     raise e
@@ -41,7 +43,7 @@ task :stress do
   $: << "../../ruby_parser/dev/lib"
   require "pp"
 
-  files = Dir["../../*/dev/**/*.rb"]
+  files = Dir["../../*/dev/**/*.rb"].reject { |s| s =~ %r%/gems/% }
 
   warn "Stress testing against #{files.size} files"
 
@@ -64,15 +66,6 @@ end
 
 task :debug => :isolate do
   ENV["V"] ||= "18"
-
-  $: << "lib"
-  require 'ruby_parser'
-
-  parser = if ENV["V"] == "18" then
-             Ruby18Parser.new
-           else
-             Ruby19Parser.new
-           end
 
   file = ENV["F"] || ENV["FILE"]
 
