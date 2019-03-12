@@ -677,12 +677,9 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_masgn(exp) # :nodoc:
-    # s(:masgn, s(:array, s(:lasgn, :var), ...), s(:to_ary, <val>, ...))
-    # s(:iter, <call>, s(:args, s(:masgn, :a, :b)), <body>)
+    _, (type, *), * = exp # ugly, but STRICT_SEXP=1+ requires this
 
-    x = exp.sexp_body.first
-
-    if Sexp === x && x.sexp_type == :array then
+    if type == :array then
       _, lhs, rhs = exp
 
       case exp.length
