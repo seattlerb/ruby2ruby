@@ -785,17 +785,11 @@ class TestRuby2Ruby < R2RTestCase
     rb2 = "a if (not b)"
     rb3 = "a if ! b"
 
-    assert_parse Ruby18Parser.new.parse(rb1), rb1
-    assert_parse Ruby19Parser.new.parse(rb1), rb1
-    assert_parse Ruby25Parser.new.parse(rb1), rb1
+    assert_parse RubyParser.new.parse(rb1), rb1
 
-    assert_parse Ruby18Parser.new.parse(rb2), rb1
-    assert_parse Ruby19Parser.new.parse(rb2), rb1
-    assert_parse Ruby25Parser.new.parse(rb2), rb1
+    assert_parse RubyParser.new.parse(rb2), rb1
 
-    assert_parse Ruby18Parser.new.parse(rb3), rb1
-    assert_parse Ruby19Parser.new.parse(rb3), rb1
-    assert_parse Ruby25Parser.new.parse(rb3), rb1
+    assert_parse RubyParser.new.parse(rb3), rb1
   end
 
   def assert_parse sexp, expected_ruby, expected_eval = nil
