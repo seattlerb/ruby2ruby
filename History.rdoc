@@ -1,3 +1,11 @@
+=== 4.12.0 / 2019-03-12
+
+* 3 bug fixes:
+
+  * Fixed sexp_body to return empty sexp instead of nil when using STRICT_SEXP.
+  * STRICT_SEXP=4+ fails w/ current use of concat. Removed concat from strictness for now.
+  * Use concat internally instead of splat. Some people have 20000 node sexps! (presidentbeef)
+
 === 2.4.1 / 2018-02-15
 
 * 2 minor enhancements:
