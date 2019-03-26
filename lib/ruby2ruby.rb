@@ -134,12 +134,14 @@ class Ruby2Ruby < SexpProcessor
         else
           raise "unknown arg type #{arg.first.inspect}"
         end
+      when nil then
+        ""
       else
         raise "unknown arg type #{arg.inspect}"
       end
     }
 
-    "(#{args.join ', '})"
+    "(#{args.join(', ').strip})"
   end
 
   def process_array exp # :nodoc:
