@@ -599,15 +599,23 @@ class Ruby2Ruby < SexpProcessor
     end
   end
 
+  def process_lambda exp # :nodoc:
+    "->"
+  end
+
   def process_iter(exp) # :nodoc:
     _, iter, args, body = exp
+
+    is_lambda = iter.sexp_type == :lambda
 
     iter = process iter
     body = process body if body
 
-    args = case args
-           when 0 then
+    args = case
+           when args == 0 then
              ""
+           when is_lambda then
+             " (#{process(args)[1..-2]})"
            else
              " |#{process(args)[1..-2]}|"
            end
@@ -622,8 +630,14 @@ class Ruby2Ruby < SexpProcessor
 
     # REFACTOR: ugh
     result = []
-    result << "#{iter} {"
-    result << args
+    if is_lambda then
+      result << iter
+      result << args
+      result << " {"
+    else
+      result << "#{iter} {"
+      result << args
+    end
     if body then
       result << " #{body.strip} "
     else
@@ -634,8 +648,16 @@ class Ruby2Ruby < SexpProcessor
     return result if result !~ /\n/ and result.size < LINE_LENGTH
 
     result = []
-    result << "#{iter} #{b}"
-    result << args
+
+    if is_lambda then
+      result << iter
+      result << args
+      result << " #{b}"
+    else
+      result << "#{iter} #{b}"
+      result << args
+    end
+
     result << "\n"
     if body then
       result << indent(body.strip)
