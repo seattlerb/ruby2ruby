@@ -118,6 +118,8 @@ class Ruby2Ruby < SexpProcessor
   def process_args exp # :nodoc:
     _, *args = exp
 
+    shadow = []
+
     args = args.map { |arg|
       case arg
       when Symbol then
@@ -131,6 +133,9 @@ class Ruby2Ruby < SexpProcessor
         when :kwarg then
           _, k, v = arg
           "#{k}: #{process v}"
+        when :shadow then
+          shadow << arg[1]
+          next
         else
           raise "unknown arg type #{arg.first.inspect}"
         end
@@ -139,9 +144,13 @@ class Ruby2Ruby < SexpProcessor
       else
         raise "unknown arg type #{arg.inspect}"
       end
-    }
+    }.compact
 
-    "(#{args.join(", ").strip})"
+    args   = args.join(", ").strip
+    shadow = shadow.join(", ").strip
+    shadow = "; #{shadow}" unless shadow.empty?
+
+    "(%s%s)" % [args, shadow]
   end
 
   def process_array exp # :nodoc:

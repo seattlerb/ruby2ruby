@@ -443,6 +443,17 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
+  def test_shadow_block_args
+    inn = s(:iter,
+            s(:call, nil, :a),
+            s(:args,
+              s(:shadow, :b),
+              s(:shadow, :c)))
+    out = 'a { |; b, c| }'
+
+    assert_parse inn, out
+  end
+
   def test_masgn_block_arg
     inn = s(:iter,
             s(:call,
