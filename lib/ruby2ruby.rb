@@ -701,43 +701,28 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_masgn(exp) # :nodoc:
-    _, (type, *), * = exp # ugly, but STRICT_SEXP=1+ requires this
+    # s(:masgn, s(:array, s(:lasgn, :var), ...), s(:to_ary, <val>, ...))
+    # s(:iter, <call>, s(:args, s(:masgn, :a, :b)), <body>)
+    parenthesize = true
 
-    if type == :array then
-      _, lhs, rhs = exp
+    result = exp.sexp_body.map { |sexp|
+      case sexp
+      when Sexp then
+        if sexp.sexp_type == :array then
+          parenthesize = context.grep(:masgn).size > 1
+          res = process sexp
 
-      case exp.length
-      when 3 then               # a, b = c, d
-        lhs = lhs.sexp_body.map { |e|
-          process e
-        }
-
-        rhs = case rhs && rhs.sexp_type
-              when :array then  # a, b = [c, d]
-                process(rhs)[1..-2]
-              else              # a, b = c
-                process rhs
-              end
-        "%s = %s" % [lhs.join(", "), rhs]
-      when 2 then               # a, (b, c) = ...
-        "(%s)" % [process(lhs)[1..-2]]
-      else
-        raise "unknown masgn length: %p" % [exp]
-      end
-    else                        # a { |(b, c)| ... }
-      lhs = exp.sexp_body.map { |e|
-        case e
-        when Symbol then
-          e
-        when Sexp then
-          process e
+          res[1..-2]
         else
-          raise "unknown masgn type: %p" % [e]
+          process sexp
         end
-      }
-
-      "(%s)" % [lhs.join(", ")]
-    end
+      when Symbol then
+        sexp
+      else
+        raise "unknown masgn: #{sexp.inspect}"
+      end
+    }
+    parenthesize ? "(#{result.join ', '})" : result.join(' = ')
   end
 
   def process_match exp # :nodoc:
@@ -1277,6 +1262,8 @@ class Ruby2Ruby < SexpProcessor
         else
           raise "unknown type: #{pt.inspect}"
         end
+      when :masgn
+        lhs = ["(#{process(lhs)})"]
       else
         raise "unhandled value in d-thing: #{pt.inspect}"
       end

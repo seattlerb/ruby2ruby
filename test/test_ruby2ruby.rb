@@ -458,6 +458,42 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
+  def test_single_nested_masgn_block_arg
+    inn = s(:iter,
+            s(:call, nil, :a),
+            s(:args,
+              s(:masgn,
+                s(:masgn,
+                  s(:masgn, :b)))))
+    out = "a { |(((b)))| }"
+
+    assert_parse inn, out
+  end
+
+  def test_multiple_nested_masgn_block_arg
+    inn = s(:iter,
+            s(:call, nil, :a),
+            s(:args, :b,
+              s(:masgn,
+                s(:masgn, :c, :d),
+                :e,
+                s(:masgn, :f, :g))))
+    out = "a { |b, ((c, d), e, (f, g))| }"
+
+    assert_parse inn, out
+  end
+
+  def test_multiple_nested_masgn_array
+    inn = s(:masgn,
+            s(:array,
+              s(:masgn, s(:array, s(:lasgn, :a), s(:lasgn, :b))),
+              s(:lasgn, :c)),
+            s(:to_ary, s(:call, nil, :fn)))
+    out = "(a, b), c = fn"
+
+    assert_parse inn, out
+  end
+
   def test_masgn_wtf
     inn = s(:block,
             s(:masgn,
