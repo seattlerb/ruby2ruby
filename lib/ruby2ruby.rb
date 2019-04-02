@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby -w
 
-require 'rubygems'
-require 'sexp_processor'
+require "rubygems"
+require "sexp_processor"
 
 # :stopdoc:
 # REFACTOR: stolen from ruby_parser
@@ -15,13 +15,13 @@ class Regexp
 
   unless defined? CODES then
     CODES = {
-      EXTENDED   => 'x',
-      IGNORECASE => 'i',
-      MULTILINE  => 'm',
-      ENC_NONE   => 'n',
-      ENC_EUC    => 'e',
-      ENC_SJIS   => 's',
-      ENC_UTF8   => 'u',
+      EXTENDED   => "x",
+      IGNORECASE => "i",
+      MULTILINE  => "m",
+      ENC_NONE   => "n",
+      ENC_EUC    => "e",
+      ENC_SJIS   => "s",
+      ENC_UTF8   => "u",
     }
   end
 end
@@ -37,7 +37,7 @@ class Ruby2Ruby < SexpProcessor
   LINE_LENGTH = 78
 
   # binary operation messages
-  BINARY = [:<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>>, :**, :'!=', :^, :|, :&]
+  BINARY = [:<=>, :==, :<, :>, :<=, :>=, :-, :+, :*, :/, :%, :<<, :>>, :**, :"!=", :^, :|, :&]
 
   ##
   # Nodes that represent assignment and probably need () around them.
@@ -76,7 +76,7 @@ class Ruby2Ruby < SexpProcessor
     :lvar,
     :nil,
     :str,
-    :true
+    :true,
   ]
 
   def initialize # :nodoc:
@@ -141,7 +141,7 @@ class Ruby2Ruby < SexpProcessor
       end
     }
 
-    "(#{args.join(', ').strip})"
+    "(#{args.join(", ").strip})"
   end
 
   def process_array exp # :nodoc:
@@ -182,7 +182,7 @@ class Ruby2Ruby < SexpProcessor
 
     code = rest.map { |sexp|
       src = process sexp
-      src = indent src unless src =~  /(^|\n)(rescue|ensure)/ # ensure no level 0 rescues
+      src = indent src unless src =~ /(^|\n)(rescue|ensure)/ # ensure no level 0 rescues
       src
     }
     code.unshift "begin"
@@ -240,7 +240,7 @@ class Ruby2Ruby < SexpProcessor
     @calls.push name
 
     in_context :arglist do
-      max = args.size-1
+      max = args.size - 1
       args = args.map.with_index { |arg, i|
         arg_type = arg.sexp_type
         is_empty_hash = arg == s(:hash)
@@ -251,7 +251,7 @@ class Ruby2Ruby < SexpProcessor
         strip_hash = (arg_type == :hash and
                       not BINARY.include? name and
                       not is_empty_hash and
-                      (i == max or args[i+1].sexp_type == :splat))
+                      (i == max or args[i + 1].sexp_type == :splat))
         wrap_arg = Ruby2Ruby::ASSIGN_NODES.include? arg_type
 
         arg = arg[2..-3] if strip_hash
@@ -264,19 +264,19 @@ class Ruby2Ruby < SexpProcessor
     case name
     when *BINARY then
       if safe_call
-        "#{receiver}&.#{name}(#{args.join(', ')})"
+        "#{receiver}&.#{name}(#{args.join(", ")})"
       elsif args.length > 1
-        "#{receiver}.#{name}(#{args.join(', ')})"
+        "#{receiver}.#{name}(#{args.join(", ")})"
       else
-        "(#{receiver} #{name} #{args.join(', ')})"
+        "(#{receiver} #{name} #{args.join(", ")})"
       end
     when :[] then
       receiver ||= "self"
-      "#{receiver}[#{args.join(', ')}]"
+      "#{receiver}[#{args.join(", ")}]"
     when :[]= then
       receiver ||= "self"
       rhs = args.pop
-      "#{receiver}[#{args.join(', ')}] = #{rhs}"
+      "#{receiver}[#{args.join(", ")}] = #{rhs}"
     when :"!" then
       "(not #{receiver})"
     when :"-@" then
@@ -285,7 +285,7 @@ class Ruby2Ruby < SexpProcessor
       "+#{receiver}"
     else
       args     = nil                    if args.empty?
-      args     = "(#{args.join(', ')})" if args
+      args     = "(#{args.join(", ")})" if args
       receiver = "#{receiver}."         if receiver and not safe_call
       receiver = "#{receiver}&."        if receiver and safe_call
 
@@ -306,11 +306,11 @@ class Ruby2Ruby < SexpProcessor
 
     expr = process expr
 
-    if expr then
-      result << "case #{expr}"
-    else
-      result << "case"
-    end
+    result << if expr then
+                "case #{expr}"
+              else
+                "case"
+              end
 
     result.concat rest.map { |pt|
       if pt and pt.sexp_type == :when
@@ -418,7 +418,7 @@ class Ruby2Ruby < SexpProcessor
       simple && body =~ /^\Abegin/ && body =~ /^end\z/
     body = indent(body) unless simple && body =~ /(^|\n)rescue/
 
-    return "#{comm}def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
+    "#{comm}def #{name}#{args}\n#{body}\nend".gsub(/\n\s*\n+/, "\n")
   end
 
   def process_defs exp # :nodoc:
@@ -477,10 +477,10 @@ class Ruby2Ruby < SexpProcessor
     ens  = process(ens) || "# do nothing"
     ens = "begin\n#{ens}\nend\n" if ens =~ /(^|\n)rescue/
 
-    body.sub!(/\n\s*end\z/, '')
+    body.sub!(/\n\s*end\z/, "")
     body = indent(body) unless body =~ /(^|\n)rescue/
 
-    return "#{body}\nensure\n#{indent ens}"
+    "#{body}\nensure\n#{indent ens}"
   end
 
   def process_evstr exp # :nodoc:
@@ -532,8 +532,6 @@ class Ruby2Ruby < SexpProcessor
   def process_hash(exp) # :nodoc:
     _, *pairs = exp
 
-    result = []
-
     result = pairs.each_slice(2).map { |k, v|
       if k.sexp_type == :kwsplat then
         "%s" % process(k)
@@ -548,7 +546,7 @@ class Ruby2Ruby < SexpProcessor
       end
     }
 
-    return result.empty? ? "{}" : "{ #{result.join(', ')} }"
+    result.empty? ? "{}" : "{ #{result.join(", ")} }"
   end
 
   def process_iasgn(exp) # :nodoc:
@@ -579,7 +577,7 @@ class Ruby2Ruby < SexpProcessor
         else
           r = "#{t} if #{c}"
         end
-        return r if r and (@indent+r).size < LINE_LENGTH and r !~ /\n/
+        return r if r and (@indent + r).size < LINE_LENGTH and r !~ /\n/
       end
 
       r = "if #{c} then\n#{indent(t)}\n"
@@ -590,12 +588,12 @@ class Ruby2Ruby < SexpProcessor
     elsif f
       unless expand then
         r = "#{f} unless #{c}"
-        return r if (@indent+r).size < LINE_LENGTH and r !~ /\n/
+        return r if (@indent + r).size < LINE_LENGTH and r !~ /\n/
       end
       "unless #{c} then\n#{indent(f)}\nend"
     else
       # empty if statement, just do it in case of side effects from condition
-      "if #{c} then\n#{indent '# do nothing'}\nend"
+      "if #{c} then\n#{indent "# do nothing"}\nend"
     end
   end
 
@@ -621,12 +619,12 @@ class Ruby2Ruby < SexpProcessor
            end
 
     b, e = if iter == "END" then
-             [ "{", "}" ]
+             %w[ { } ]
            else
-             [ "do", "end" ]
+             %w[ do end ]
            end
 
-    iter.sub!(/\(\)$/, '')
+    iter.sub!(/\(\)$/, "")
 
     # REFACTOR: ugh
     result = []
@@ -638,11 +636,11 @@ class Ruby2Ruby < SexpProcessor
       result << "#{iter} {"
       result << args
     end
-    if body then
-      result << " #{body.strip} "
-    else
-      result << ' '
-    end
+    result << if body then
+                " #{body.strip} "
+              else
+                " "
+              end
     result << "}"
     result = result.join
     return result if result !~ /\n/ and result.size < LINE_LENGTH
@@ -722,7 +720,7 @@ class Ruby2Ruby < SexpProcessor
         raise "unknown masgn: #{sexp.inspect}"
       end
     }
-    parenthesize ? "(#{result.join ', '})" : result.join(' = ')
+    parenthesize ? "(#{result.join ", "})" : result.join(" = ")
   end
 
   def process_match exp # :nodoc:
@@ -820,14 +818,14 @@ class Ruby2Ruby < SexpProcessor
     # a &&= 1
     # [[:lvar, :a], [:lasgn, :a, [:lit, 1]]]
     _, _lhs, rhs = exp
-    process(rhs).sub(/\=/, '&&=')
+    process(rhs).sub(/\=/, "&&=")
   end
 
   def process_op_asgn_or(exp) # :nodoc:
     # a ||= 1
     # [[:lvar, :a], [:lasgn, :a, [:lit, 1]]]
     _, _lhs, rhs = exp
-    process(rhs).sub(/\=/, '||=')
+    process(rhs).sub(/\=/, "||=")
   end
 
   def process_or(exp) # :nodoc:
@@ -865,10 +863,9 @@ class Ruby2Ruby < SexpProcessor
 
   def process_rescue exp # :nodoc:
     _, *rest = exp
-    exp = nil
 
     body = process rest.shift unless rest.first.sexp_type == :resbody
-    els  = process rest.pop   unless rest.last && rest.last.sexp_type  == :resbody
+    els  = process rest.pop   unless rest.last && rest.last.sexp_type == :resbody
 
     body ||= "# do nothing"
 
@@ -887,7 +884,7 @@ class Ruby2Ruby < SexpProcessor
     if els then
       "#{indent body}\n#{resbodies.join("\n")}\nelse\n#{indent els}"
     elsif simple then
-      resbody = resbodies.first.sub(/\n\s*/, ' ')
+      resbody = resbodies.first.sub(/\n\s*/, " ")
       "#{body} #{resbody}"
     else
       "#{indent body}\n#{resbodies.join("\n")}"
@@ -920,7 +917,7 @@ class Ruby2Ruby < SexpProcessor
 
     raise "dunno what to do: #{args.inspect}" if args
 
-    name = name.to_s.sub(/=$/, '')
+    name = name.to_s.sub(/=$/, "")
 
     if rhs && rhs != s(:arglist) then
       "#{receiver}&.#{name} = #{process rhs}"
@@ -1013,7 +1010,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_until(exp) # :nodoc:
-    cond_loop(exp, 'until')
+    cond_loop(exp, "until")
   end
 
   def process_valias exp # :nodoc:
@@ -1057,7 +1054,7 @@ class Ruby2Ruby < SexpProcessor
     }
 
     unless args.empty? then
-      "yield(#{args.join(', ')})"
+      "yield(#{args.join(", ")})"
     else
       "yield"
     end
@@ -1218,7 +1215,7 @@ class Ruby2Ruby < SexpProcessor
   # Wrap appropriate expressions in matching parens.
 
   def parenthesize exp
-    case self.context[1]
+    case context[1]
     when nil, :defn, :defs, :class, :sclass, :if, :iter, :resbody, :when, :while then
       exp
     else
@@ -1252,20 +1249,13 @@ class Ruby2Ruby < SexpProcessor
     str = dthing_escape(type, str)
 
     rest = rest.map { |pt|
-      case pt
-      when Sexp then # TODO: what the fuck? why??
-        case pt.sexp_type
-        when :str then
-          dthing_escape(type, pt.last)
-        when :evstr then
-          '#{%s}' % [process(pt)]
-        else
-          raise "unknown type: #{pt.inspect}"
-        end
-      when :masgn
-        lhs = ["(#{process(lhs)})"]
+      case pt.sexp_type
+      when :str then
+        dthing_escape(type, pt.last)
+      when :evstr then
+        '#{%s}' % [process(pt)]
       else
-        raise "unhandled value in d-thing: #{pt.inspect}"
+        raise "unknown type: #{pt.inspect}"
       end
     }
 
@@ -1275,7 +1265,7 @@ class Ruby2Ruby < SexpProcessor
   ##
   # Utility method to generate ether a module or class.
 
-  def util_module_or_class(exp, is_class=false)
+  def util_module_or_class exp, is_class = false
     result = []
 
     _, name, *body = exp
@@ -1296,11 +1286,11 @@ class Ruby2Ruby < SexpProcessor
       process(sexp).chomp
     }
 
-    unless body.empty? then
-      body = indent(body.join("\n\n")) + "\n"
-    else
-      body = ""
-    end
+    body = unless body.empty? then
+             indent(body.join("\n\n")) + "\n"
+           else
+             ""
+           end
 
     result << body
     result << "end"

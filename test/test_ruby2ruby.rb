@@ -2,22 +2,22 @@
 
 $TESTING = true
 
-$: << 'lib'
+$: << "lib"
 
-require 'minitest/autorun'
-require 'ruby2ruby'
-require 'pt_testcase'
-require 'fileutils'
-require 'tmpdir'
-require 'ruby_parser' if ENV["CHECK_SEXPS"]
+require "minitest/autorun"
+require "ruby2ruby"
+require "pt_testcase"
+require "fileutils"
+require "tmpdir"
+require "ruby_parser" if ENV["CHECK_SEXPS"]
 
 class R2RTestCase < ParseTreeTestCase
   def self.previous key
     "ParseTree"
   end
 
-  def self.generate_test klass, node, data, input_name, output_name
-    output_name = data.has_key?('Ruby2Ruby') ? 'Ruby2Ruby' : 'Ruby'
+  def self.generate_test klass, node, data, input_name, _output_name
+    output_name = data.key?("Ruby2Ruby") ? "Ruby2Ruby" : "Ruby"
 
     klass.class_eval <<-EOM
       def test_#{node}
@@ -170,7 +170,7 @@ class TestRuby2Ruby < R2RTestCase
     assert_equal exp, Ruby2Ruby.new.process(sexp)
   end
 
-  def assert_rt src, exp=src.dup
+  def assert_rt src, exp = src.dup
     assert_equal exp, Ruby2Ruby.new.process(RubyParser.new.parse(src))
   end
 
@@ -297,7 +297,7 @@ class TestRuby2Ruby < R2RTestCase
   def test_attr_writer_same
     do_not_check_sexp!
 
-    inn = s(:defn, :same=, s(:args, :o), s(:iasgn, :@same , s(:lvar, :o)))
+    inn = s(:defn, :same=, s(:args, :o), s(:iasgn, :@same, s(:lvar, :o)))
     out = "attr_writer :same"
     assert_parse inn, out
   end
@@ -552,7 +552,7 @@ class TestRuby2Ruby < R2RTestCase
               :z,
               s(:lit, 1))
 
-    out ="x&.y&.z(1)"
+    out = "x&.y&.z(1)"
     assert_parse inn, out
   end
 
@@ -853,10 +853,10 @@ end
 # s
 # t  new    2    3
 
-tr2r = File.read(__FILE__).split(/\n/)[start+1..__LINE__-2].join("\n")
+tr2r = File.read(__FILE__).split(/\n/)[start + 1..__LINE__ - 2].join("\n")
 ir2r = File.read("lib/ruby2ruby.rb")
 
-require 'ruby_parser'
+require "ruby_parser"
 
 def silent_eval ruby
   old, $-w = $-w, nil
@@ -873,9 +873,9 @@ def morph_and_eval src, from, to, processor
 end
 
 unless ENV["SIMPLE"] then
-  ____ = morph_and_eval tr2r, /TestRuby2Ruby/, 'TestRuby2Ruby2', Ruby2Ruby
-  ruby = morph_and_eval ir2r, /Ruby2Ruby/,     'Ruby2Ruby2',     Ruby2Ruby
-  ____ = morph_and_eval ruby, /Ruby2Ruby2/,    'Ruby2Ruby3',     Ruby2Ruby2
+  ____ = morph_and_eval tr2r, /TestRuby2Ruby/, "TestRuby2Ruby2", Ruby2Ruby
+  ruby = morph_and_eval ir2r, /Ruby2Ruby/,     "Ruby2Ruby2",     Ruby2Ruby
+  ____ = morph_and_eval ruby, /Ruby2Ruby2/,    "Ruby2Ruby3",     Ruby2Ruby2
 
   class TestRuby2Ruby1 < TestRuby2Ruby
     def setup
