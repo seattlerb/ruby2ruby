@@ -1,3 +1,12 @@
+=== 2.4.3 / 2019-06-03
+
+* 4 bug fixes:
+
+  * Added shadow block args. (jaynetics)
+  * Fixed generation for block args w/ trailing commas.
+  * Fixed nested masgn block args and arrays. (jaynetics)
+  * Fixes for stabby proc / lambda changes.
+
 === 2.4.2 / 2019-03-12
 
 * 2 bug fixes:
