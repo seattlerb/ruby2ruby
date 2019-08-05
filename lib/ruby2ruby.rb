@@ -403,12 +403,12 @@ class Ruby2Ruby < SexpProcessor
 
     # s(:defn, name, args, ivar|iasgn)
     case exp
-    when s{ s(:defn, atom, t(:args), s(:ivar, atom)) } then # TODO: atom -> _
+    when s{ q(:defn, atom, t(:args), q(:ivar, atom)) } then # TODO: atom -> _
       _, ivar = body.first
       ivar = ivar.to_s[1..-1] # remove leading @
       reader = name.to_s
       return "attr_reader #{name.inspect}" if reader == ivar
-    when s{ s(:defn, atom, t(:args), s(:iasgn, atom, s(:lvar, atom))) } then
+    when s{ q(:defn, atom, t(:args), q(:iasgn, atom, q(:lvar, atom))) } then
       _, ivar, _val = body.first
       ivar = ivar.to_s[1..-1] # remove leading @
       reader = name.to_s.chomp "="
