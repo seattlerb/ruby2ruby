@@ -1,3 +1,9 @@
+=== 2.4.4 / 2019-09-24
+
+* 1 bug fix:
+
+  * Fixed deprecation warnings from patterns change in sexp_processor.
+
 === 2.4.3 / 2019-06-03
 
 * 4 bug fixes:

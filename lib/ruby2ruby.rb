@@ -31,7 +31,7 @@ end
 # Generate ruby code from a sexp.
 
 class Ruby2Ruby < SexpProcessor
-  VERSION = "2.4.3" # :nodoc:
+  VERSION = "2.4.4" # :nodoc:
 
   # cutoff for one-liners
   LINE_LENGTH = 78
