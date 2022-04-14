@@ -118,6 +118,14 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
+  def test_hash_shorthand_invalid_key_type
+    inn = s(:hash, s(:str, 'k'), nil)
+    out = '{ k: }'
+    assert_raises do
+      assert_parse inn, out
+    end
+  end
+
   def test_and_alias
     inn = s(:and, s(:true), s(:alias, s(:lit, :a), s(:lit, :b)))
     out = "true and (alias :a :b)"
