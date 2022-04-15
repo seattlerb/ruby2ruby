@@ -544,6 +544,13 @@ class Ruby2Ruby < SexpProcessor
     result = pairs.each_slice(2).map { |k, v|
       if k.sexp_type == :kwsplat then
         "%s" % process(k)
+      elsif v.nil?
+        # Shorthand hash syntax
+        unless k.sexp_type == :lit and k.value.is_a? Symbol
+          raise "Expected symbol for hash key, but got #{k.inspect}"
+        end
+
+        "#{k.value}:"
       else
         t = v.sexp_type
 
