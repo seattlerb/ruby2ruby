@@ -325,6 +325,7 @@ class Ruby2Ruby < SexpProcessor
       if pt and pt.sexp_type == :when
         "#{process pt}"
       else
+        next unless pt
         code = indent process pt
         code = indent("# do nothing") if code =~ /^\s*$/
         "else\n#{code}"
@@ -333,7 +334,7 @@ class Ruby2Ruby < SexpProcessor
 
     result << "end"
 
-    result.join "\n"
+    result.compact.join "\n"
   end
 
   def process_cdecl exp # :nodoc:
