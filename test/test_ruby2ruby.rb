@@ -100,8 +100,8 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_hash_parens_lvar
-    inn = s(:hash, s(:lit, :k), s(:lvar, :x))
-    out = "{ :k => x }"
+    inn = s(:hash, s(:lit, :k), s(:lvar, :a))
+    out = "{ :k => a }"
     assert_parse inn, out
   end
 
@@ -126,6 +126,8 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_hash_shorthand_invalid_key_type
+    do_not_check_sexp!
+
     inn = s(:hash, s(:str, 'k'), nil)
     out = '{ k: }'
     assert_raises do
@@ -388,15 +390,12 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_call_self_index
-    assert_parse s(:call, nil, :[], s(:lit, 42)), "self[42]"
+    assert_parse s(:call, s(:self), :[], s(:lit, 42)), "self[42]"
   end
 
   def test_call_self_index_equals
     assert_parse(s(:attrasgn, s(:self), :[]=, s(:lit, 42), s(:lit, 24)),
                  "self[42] = 24")
-  end
-
-  def test_call_self_index_equals_array
     assert_parse(s(:attrasgn, s(:self), :[]=, s(:lit, 1), s(:lit, 2), s(:lit, 3)),
                  "self[1, 2] = 3")
   end
@@ -404,7 +403,7 @@ class TestRuby2Ruby < R2RTestCase
   def test_call_arglist_hash_first
     inn = s(:call, nil, :method,
             s(:hash, s(:lit, :a), s(:lit, 1)),
-            s(:call, nil, :b))
+            s(:lvar, :b))
     out = "method({ :a => 1 }, b)"
 
     assert_parse inn, out
@@ -413,16 +412,16 @@ class TestRuby2Ruby < R2RTestCase
   def test_call_arglist_hash_first_last
     inn = s(:call, nil, :method,
             s(:hash, s(:lit, :a), s(:lit, 1)),
-            s(:call, nil, :b),
+            s(:call, nil, :x),
             s(:hash, s(:lit, :c), s(:lit, 1)))
-    out = "method({ :a => 1 }, b, :c => 1)"
+    out = "method({ :a => 1 }, x, :c => 1)"
 
     assert_parse inn, out
   end
 
   def test_call_arglist_hash_last
     inn = s(:call, nil, :method,
-            s(:call, nil, :b),
+            s(:lvar, :b),
             s(:hash, s(:lit, :a), s(:lit, 1)))
     out = "method(b, :a => 1)"
 
@@ -431,12 +430,12 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_call_arglist_if
     inn = s(:call,
-            s(:call, nil, :a),
+            s(:lvar, :a),
             :+,
             s(:if,
-              s(:call, nil, :b),
-              s(:call, nil, :c),
-              s(:call, nil, :d)))
+              s(:lvar, :b),
+              s(:lvar, :c),
+              s(:lvar, :d)))
 
     out = "(a + (b ? (c) : (d)))"
     assert_parse inn, out
@@ -462,8 +461,7 @@ class TestRuby2Ruby < R2RTestCase
     inn = s(:iter,
             s(:call, nil, :a),
             s(:args,
-              s(:shadow, :b),
-              s(:shadow, :c)))
+              s(:shadow, :b, :c)))
     out = 'a { |; b, c| }'
 
     assert_parse inn, out
@@ -593,6 +591,8 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_safe_op_asgn
+    do_not_check_sexp! # TODO: fix!
+
     inn = s(:safe_op_asgn,
             s(:call, nil, :x),
             s(:call, nil, :z, s(:lit, 1)),
@@ -719,8 +719,8 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_binary_operators_with_multiple_arguments
     Ruby2Ruby::BINARY.each do |op|
-      inn = s(:call, s(:lvar, :x), op, s(:lit, 2), s(:lit, 3))
-      out = "x.#{op}(2, 3)"
+      inn = s(:call, s(:lvar, :a), op, s(:lit, 2), s(:lit, 3))
+      out = "a.#{op}(2, 3)"
       assert_parse inn, out
     end
   end
@@ -802,6 +802,8 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_op_asgn
+    do_not_check_sexp! # TODO: fix!
+
     inn = s(:op_asgn,
             s(:call, nil, :x),
             s(:call, nil, :z, s(:lit, 1)),
@@ -824,38 +826,48 @@ class TestRuby2Ruby < R2RTestCase
 
   def test_array_adds_parens_around_rescue
     inn = s(:array,
-            s(:call, nil, :a),
-            s(:rescue, s(:call, nil, :b), s(:resbody, s(:array), s(:call, nil, :c))))
+            s(:lvar, :a),
+            s(:rescue, s(:lvar, :b), s(:resbody, s(:array), s(:lvar, :c))))
     out = "[a, (b rescue c)]"
 
     assert_parse inn, out
   end
 
   def test_call_arglist_rescue
-    inn = s(:call,
-            nil,
-            :method,
+    inn = s(:call, nil, :method,
             s(:rescue,
-              s(:call, nil, :a),
-              s(:resbody, s(:array), s(:call, nil, :b))))
+              s(:lvar, :a),
+              s(:resbody, s(:array), s(:lvar, :b))))
     out = "method((a rescue b))"
     assert_parse inn, out
   end
 
   def test_unless_vs_if_not
+    do_not_check_sexp! # TODO: remove? dunno if that's possible w/ this one
+
     rb1 = "a unless b"
     rb2 = "a if (not b)"
     rb3 = "a if ! b"
 
-    assert_parse RubyParser.new.parse(rb1), rb1
+    assert_parse ruby_parser.parse(rb1), rb1
 
-    assert_parse RubyParser.new.parse(rb2), rb1
+    assert_parse ruby_parser.parse(rb2), rb1
 
-    assert_parse RubyParser.new.parse(rb3), rb1
+    assert_parse ruby_parser.parse(rb3), rb1
+  end
+
+  def ruby_parser
+    parser = RubyParser.for_current_ruby
+
+    %i[a b c d].each do |v|
+      parser.env[v] = :lvar
+    end
+
+    parser
   end
 
   def assert_parse sexp, expected_ruby, expected_eval = nil
-    assert_equal sexp, RubyParser.new.process(expected_ruby), "ruby -> sexp" if
+    assert_equal sexp, ruby_parser.process(expected_ruby), "ruby -> sexp" if
       @check_sexp
 
     assert_equal expected_ruby, @processor.process(sexp), "sexp -> ruby"

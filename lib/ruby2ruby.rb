@@ -134,7 +134,7 @@ class Ruby2Ruby < SexpProcessor
           _, k, v = arg
           "#{k}: #{process v}"
         when :shadow then
-          shadow << arg[1]
+          shadow << arg.sexp_body
           next
         else
           raise "unknown arg type #{arg.first.inspect}"
