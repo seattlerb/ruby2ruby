@@ -368,15 +368,6 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
-  def test_defn_kwargs
-    inn = s(:defn, :initialize,
-            s(:args, :arg, s(:kwarg, :keyword, s(:nil)), :"**args"),
-            s(:nil))
-    out = "def initialize(arg, keyword: nil, **args)\n  # do nothing\nend"
-
-    assert_parse inn, out
-  end
-
   def test_defn_kwargs2
     inn = s(:defn, :initialize,
             s(:args, :arg,
@@ -412,9 +403,9 @@ class TestRuby2Ruby < R2RTestCase
   def test_call_arglist_hash_first_last
     inn = s(:call, nil, :method,
             s(:hash, s(:lit, :a), s(:lit, 1)),
-            s(:call, nil, :x),
+            s(:lvar, :b),
             s(:hash, s(:lit, :c), s(:lit, 1)))
-    out = "method({ :a => 1 }, x, :c => 1)"
+    out = "method({ :a => 1 }, b, :c => 1)"
 
     assert_parse inn, out
   end
@@ -490,19 +481,6 @@ class TestRuby2Ruby < R2RTestCase
                 s(:masgn,
                   s(:masgn, :b)))))
     out = "a { |(((b)))| }"
-
-    assert_parse inn, out
-  end
-
-  def test_multiple_nested_masgn_block_arg
-    inn = s(:iter,
-            s(:call, nil, :a),
-            s(:args, :b,
-              s(:masgn,
-                s(:masgn, :c, :d),
-                :e,
-                s(:masgn, :f, :g))))
-    out = "a { |b, ((c, d), e, (f, g))| }"
 
     assert_parse inn, out
   end
@@ -626,38 +604,6 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
-  def test_resbody_block
-    inn = s(:rescue,
-            s(:call, nil, :x1),
-            s(:resbody,
-              s(:array),
-              s(:call, nil, :x2),
-              s(:call, nil, :x3)))
-
-    out = "begin\n  x1\nrescue\n  x2\n  x3\nend"
-    assert_parse inn, out
-  end
-
-  def test_resbody_short_with_begin_end
-    # "begin; blah; rescue; []; end"
-    inn = s(:rescue,
-            s(:call, nil, :blah),
-            s(:resbody, s(:array), s(:array)))
-    out = "blah rescue []"
-    assert_parse inn, out
-  end
-
-  def test_resbody_short_with_begin_end_multiple
-    # "begin; blah; rescue; []; end"
-    inn = s(:rescue,
-            s(:call, nil, :blah),
-            s(:resbody, s(:array),
-              s(:call, nil, :log),
-              s(:call, nil, :raise)))
-    out = "begin\n  blah\nrescue\n  log\n  raise\nend"
-    assert_parse inn, out
-  end
-
   def test_resbody_short_with_defn_multiple
     inn = s(:defn,
             :foo,
@@ -771,12 +717,6 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
-  def test_basic_ensure
-    inn = s(:ensure, s(:lit, 1), s(:lit, 2))
-    out = "begin\n  1\nensure\n  2\nend"
-    assert_parse inn, out
-  end
-
   def test_nested_ensure
     inn = s(:ensure, s(:lit, 1), s(:ensure, s(:lit, 2), s(:lit, 3)))
     out = "begin\n  1\nensure\n  begin\n    2\n  ensure\n    3\n  end\nend"
@@ -790,14 +730,12 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_nested_rescue_exception
-    inn = s(:ensure, s(:lit, 1), s(:rescue, s(:lit, 2), s(:resbody, s(:array, s(:const, :Exception)), s(:lit, 3))))
+    inn = s(:ensure,
+            s(:lit, 1),
+            s(:rescue, s(:lit, 2),
+              s(:resbody, s(:array, s(:const, :Exception)),
+                s(:lit, 3))))
     out = "begin\n  1\nensure\n  begin\n    2\n  rescue Exception\n    3\n  end\nend"
-    assert_parse inn, out
-  end
-
-  def test_nested_rescue_exception2
-    inn = s(:ensure, s(:rescue, s(:lit, 2), s(:resbody, s(:array, s(:const, :Exception)), s(:lit, 3))), s(:lit, 1))
-    out = "begin\n  2\nrescue Exception\n  3\nensure\n  1\nend"
     assert_parse inn, out
   end
 
