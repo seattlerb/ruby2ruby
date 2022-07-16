@@ -621,9 +621,7 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_call_binary_call_with_hash_arg
-    # if 42
-    #   args << {:key => 24}
-    # end
+    # args << {:key => 24} if 42
 
     inn = s(:if, s(:lit, 42),
             s(:call, s(:call, nil, :args),
@@ -663,6 +661,253 @@ class TestRuby2Ruby < R2RTestCase
     inn = s(:if, s(:call, nil, :x), nil, nil)
     out = "if x then\n  # do nothing\nend"
     assert_parse inn, out
+  end
+
+  def test_case_in_normal_01
+    assert_case_in "var", s(:lasgn, :var)
+  end
+
+  def test_case_in_normal_02
+    assert_case_in "^var", s(:lvar, :var)
+  end
+
+  def test_case_in_normal_04
+    assert_case_in "A if true", s(:if, s(:true), s(:const, :A), nil)
+  end
+
+  def test_case_in_normal_05
+    assert_case_in "A unless true", s(:if, s(:true), nil, s(:const, :A))
+  end
+
+  def test_case_in_normal_06
+    assert_case_in "A::B",   s(:const, s(:colon2, s(:const, :A), :B))
+  end
+
+  def test_case_in_normal_07
+    assert_case_in "A | B", s(:or, s(:const, :A), s(:const, :B)), "(A | B)"
+
+    # TODO: assert_case_in "(A or B)", s(:const, s(:colon2, s(:colon3, :A), :B))
+  end
+
+  def test_case_in_normal_08
+    assert_case_in "::A::B", s(:const, s(:colon2, s(:colon3, :A), :B))
+  end
+
+  def test_case_in_normal_09
+    assert_case_in "A", s(:const, :A)
+  end
+
+  def test_case_in__array_pat_00
+    assert_case_in "Object[]", s(:array_pat, s(:const, :Object))
+  end
+
+  def test_case_in__array_pat_01
+    assert_case_in "[]", s(:array_pat)
+  end
+
+  def test_case_in__array_pat_02
+    assert_case_in "[*, ::NilClass]", s(:array_pat, nil, :*, s(:colon3, :NilClass))
+  end
+
+  def test_case_in__array_pat_03
+    assert_case_in "[*, :b, :c]", s(:array_pat, nil, :*, s(:lit, :b), s(:lit, :c))
+  end
+
+  def test_case_in__array_pat_04
+    assert_case_in "[[:b, ^c], [:d, ^e]]", s(:array_pat, nil, s(:array_pat, nil, s(:lit, :b), s(:lvar, :c)), s(:array_pat, nil, s(:lit, :d), s(:lvar, :e)))
+  end
+
+  def test_case_in__array_pat_06
+    assert_case_in "[A, *, B]", s(:array_pat, nil, s(:const, :A), :*, s(:const, :B))
+  end
+
+  def test_case_in__array_pat_07
+    assert_case_in "[-> (b) { true }, ^c]", s(:array_pat, nil, s(:iter, s(:lambda), s(:args, :b), s(:true)), s(:lvar, :c))
+  end
+
+  def test_case_in__array_pat_09
+    assert_case_in "[:a, ^b, ^c, [:d, *e, nil]]", s(:array_pat, nil, s(:lit, :a), s(:lvar, :b), s(:lvar, :c), s(:array_pat, nil, s(:lit, :d), :"*e", s(:nil)))
+  end
+
+  def test_case_in__array_pat_14
+    assert_case_in "A[*list]", s(:array_pat, s(:const, :A), :"*list")
+  end
+
+  def test_case_in__array_pat_15
+    assert_case_in "B[C => d]", s(:array_pat, s(:const, :B), s(:lasgn, :d, s(:const, :C)))
+  end
+
+  def test_case_in__array_pat_16
+    assert_case_in "B[^c]", s(:array_pat, s(:const, :B), s(:lvar, :c))
+  end
+
+  def test_case_in__array_pat_19
+    assert_case_in "[^@a, ^$b, ^@@c]", s(:array_pat, nil, s(:ivar, :@a), s(:gvar, :$b), s(:cvar, :@@c)) # HACK: really not sure about this one
+  end
+
+  def test_case_in__find_pat
+    skip "not yet"
+
+    assert_case_in "(*a, :+, *b)", s(:find_pat, nil, :"*a", s(:array_pat, s(:lit, :+)), :"*b")
+    assert_case_in "NAH", s(:find_pat, nil, :*, s(:array_pat, s(:lit, :b), s(:lvar, :c)), :*)
+    assert_case_in "NAH", s(:find_pat, s(:const, :Symbol), :"*lhs", s(:array_pat, s(:lvar, :x)), :"*rhs")
+  end
+
+  def test_case_in_22
+    assert_case_in("Symbol[*lhs, x, *rhs]",
+                   s(:find_pat, s(:const, :Symbol),
+                     :"*lhs",
+                     s(:array_pat, s(:lasgn, :x)),
+                     :"*rhs"),
+                   "Symbol(*lhs, x, *rhs)",)
+  end
+
+  def test_case_in_10
+    assert_case_in("[nil, nil, nil]",
+                   s(:array_pat,
+                     nil,
+                     s(:nil),
+                     s(:nil),
+                     s(:nil)))
+  end
+
+  def test_case_in_32_2
+    assert_case_in "1..3", s(:dot2, s(:lit, 1), s(:lit, 3)), "(1..3)"
+  end
+
+  def test_case_in_32_3
+    assert_case_in "1...3", s(:dot3, s(:lit, 1), s(:lit, 3)), "(1...3)"
+  end
+
+  def test_case_in_36
+    pt = s(:array_pat, nil,
+           s(:lit, :a), s(:lasgn, :b), s(:lvar, :d), :"*e", s(:nil))
+
+    assert_case_in "[:a, b, ^d, *e, nil]", pt
+  end
+
+  def test_case_in_42
+    rb = "case :a\nin [:b, *_] then\n  nil\nend"
+    pt = s(:case, s(:lit, :a),
+           s(:in,
+             s(:array_pat,
+               nil,
+               s(:lit, :b),
+               :"*_",
+              ),
+             s(:nil)),
+           nil)
+
+    assert_parse pt, rb
+    assert_variant pt, "case :a\nin :b, *_ then\n  nil\nend"
+  end
+
+  def test_case_in_42_2
+    rb = "case :a\nin A[*list] then\n  nil\nend"
+    pt = s(:case, s(:lit, :a),
+           s(:in,
+             s(:array_pat,
+               s(:const, :A),
+               :"*list"),
+             s(:nil)),
+           nil)
+
+    assert_parse pt, rb
+    assert_variant pt, "case :a\nin A(*list) then\n  nil\nend"
+  end
+
+  def test_case_in_67
+    rb = "case :a\nin 1.. then nil\nend"
+    rb = "case :a\nin (1..) then\n  nil\nend"
+    pt = s(:case,
+           s(:lit, :a),
+           s(:in, s(:dot2, s(:lit, 1), nil),
+             s(:nil)),
+           nil)
+
+    assert_parse pt, rb
+  end
+
+  def test_case_in_76
+    assert_case_in "`echo hi`", s(:xstr, "echo hi")
+  end
+
+  def test_case_in_77
+    assert_case_in "/regexp/", s(:lit, /regexp/)
+  end
+
+  def test_case_in_79
+    assert_case_in "%w[a b]", s(:array_pat, nil, s(:str, "a"), s(:str, "b")), "[\"a\", \"b\"]"
+  end
+
+  def test_case_in_80
+    assert_case_in "%I[a b]", s(:array_pat, nil, s(:lit, :a), s(:lit, :b)), "[:a, :b]"
+  end
+
+  def test_case_in_83
+    pt = s(:array_pat, nil,
+           s(:iter, s(:lambda), s(:args, :b),
+             s(:true)),
+           s(:lasgn, :c))
+
+    assert_case_in "[-> (b) { true }, c]", pt
+  end
+
+  def test_case_in_85
+    pt = s(:array_pat, nil,
+           s(:array_pat, nil,
+             s(:lit, :b),
+             s(:lasgn, :c)),
+           s(:array_pat,
+             nil,
+             s(:lit, :d),
+             s(:lvar, :e)),
+          )
+
+    assert_case_in "[[:b, c], [:d, ^e]]", pt
+  end
+
+  def test_case_in__hash_pat_00
+    assert_case_in "{}", s(:hash_pat, nil)
+  end
+
+  def test_case_in__hash_pat_01
+    assert_case_in "**nil",   s(:hash_pat, nil, s(:kwrest, :"**nil")), "{ **nil }"
+  end
+
+  def test_case_in__hash_pat_03
+    assert_case_in "a:", s(:hash_pat, nil, s(:lit, :a), nil), "{ a: }"
+  end
+
+  def test_case_in__hash_pat_06
+    assert_case_in "a:1, **r",s(:hash_pat, nil, s(:lit, :a), s(:lit, 1), s(:kwrest, :"**r")), "{ a: 1, **r }"
+  end
+
+  def test_case_in__hash_pat_08
+    assert_case_in "{ b: [Hash, *] }", s(:hash_pat, nil, s(:lit, :b), s(:array_pat, nil, s(:const, :Hash), :*))
+  end
+
+  def test_case_in__hash_pat_09
+    assert_case_in("{ b: Integer => x, d: \"e\", f: }",
+                   s(:hash_pat, nil,
+                     s(:lit, :b), s(:lasgn, :x, s(:const, :Integer)),
+                     s(:lit, :d), s(:str, "e"), s(:lit, :f), nil))
+  end
+
+  def test_case_in__hash_pat_10
+    assert_case_in "{ b: ^c, **r }", s(:hash_pat, nil, s(:lit, :b), s(:lvar, :c), s(:kwrest, :"**r"))
+  end
+
+  def test_case_in__hash_pat_11
+    assert_case_in "{ b: \"c\", d: \"e\" }", s(:hash_pat, nil, s(:lit, :b), s(:str, "c"), s(:lit, :d), s(:str, "e"))
+  end
+
+  def test_case_in__hash_pat_12
+    assert_case_in "{ b: true }", s(:hash_pat, nil, s(:lit, :b), s(:true))
+  end
+
+  def test_case_in__hash_pat_14
+    assert_case_in "Object[b: 1]", s(:hash_pat, s(:const, :Object), s(:lit, :b), s(:lit, 1))
   end
 
   def test_interpolation_and_escapes
@@ -787,11 +1032,39 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def assert_parse sexp, expected_ruby, expected_eval = nil
-    assert_equal sexp, ruby_parser.process(expected_ruby), "ruby -> sexp" if
-      @check_sexp
-
     assert_equal expected_ruby, @processor.process(sexp), "sexp -> ruby"
     assert_equal expected_eval, eval(expected_ruby) if expected_eval
+    assert_variant sexp, expected_ruby if @check_sexp
+  end
+
+  def assert_variant sexp, expected_ruby
+    assert_equal sexp, ruby_parser.process(expected_ruby), "ruby -> sexp"
+  end
+
+  def assert_case_in lit, exp_pt, normal_lit = nil
+    rb = "case :a\nin #{normal_lit || lit} then\n  # do nothing\nend"
+
+    exp_pt.deep_each { |s| s.line ||= 2 }
+    exp_pt.line ||= 2
+
+    # flunk "redundant: #{lit.inspect}" if normal_lit == lit
+    # flunk "redundant: #{lit.inspect}" if normal_lit && normal_lit[1..-2] == lit
+    normal_lit, lit = lit, lit[1..-2] if lit =~ /^\[.+\]$/ && !normal_lit
+
+    if ENV["VERBOSE_TEST"] then
+      puts
+      puts rb
+    end
+
+    pt = s(:case, s(:lit, :a).line(1),
+           s(:in, exp_pt, nil).line(2),
+           nil).line(1)
+
+    if normal_lit then
+      assert_variant pt, "case :a\nin #{lit} then\n  # do nothing\nend"
+    end
+
+    assert_parse pt, rb
   end
 
   def util_thingy(type)

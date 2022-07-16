@@ -322,7 +322,7 @@ class Ruby2Ruby < SexpProcessor
               end
 
     result.concat rest.map { |pt|
-      if pt and pt.sexp_type == :when
+      if pt and %i[when in].include? pt.sexp_type
         "#{process pt}"
       else
         next unless pt
@@ -367,13 +367,26 @@ class Ruby2Ruby < SexpProcessor
   def process_const exp # :nodoc:
     _, name = exp
 
+    name = process name if Sexp === name
+
     name.to_s
+  end
+
+  def __var name
+    case context[1]
+    when /_pat$/ then
+      "^#{name}"
+    when :in then
+      "^#{name}"
+    else
+      name.to_s
+    end
   end
 
   def process_cvar exp # :nodoc:
     _, name = exp
 
-    name.to_s
+    __var name
   end
 
   def process_cvasgn exp # :nodoc:
@@ -536,7 +549,7 @@ class Ruby2Ruby < SexpProcessor
   def process_gvar exp # :nodoc:
     _, name = exp
 
-    name.to_s
+    __var name
   end
 
   def process_hash(exp) # :nodoc:
@@ -574,6 +587,103 @@ class Ruby2Ruby < SexpProcessor
     else # part of an masgn
       lhs.to_s
     end
+  end
+
+  def process_in exp # :nodoc:
+    _, lhs, *rhs = exp
+
+    cond = process lhs
+    body = rhs.compact.map { |sexp| indent process sexp }
+
+    body << indent("# do nothing") if body.empty?
+    body = body.join "\n"
+
+    "in #{cond} then\n#{body.chomp}"
+  end
+
+  def process_find_pat exp # :nodoc:
+    # s(:find_pat, s(:const, :Symbol), :"*lhs", s(:array_pat, s(:lvar, :x)), :"*rhs")
+    # =>
+    # "Symbol(*lhs, x, *rhs)"
+
+    _, a, b, c, d = exp
+
+    a = process a
+    b = process b if Sexp === b
+    c = process c
+    d = process d if Sexp === d
+
+    "%s(%s, %s, %s)" % [a, b, c, d]
+  end
+
+  def process_array_pat exp # :nodoc:
+    _, const, *rest = exp
+
+    if context[1] == :find_pat then
+      raise ArgumentError, "dunno: %p" % [exp] if exp.length > 2
+      _, lhs = exp
+      process lhs
+    else
+      const = process const if const
+
+      rest = rest.map { |sexp|
+        case sexp
+        when Sexp
+          process sexp
+        else
+          sexp
+        end
+      }
+
+      if const then
+        "%s[%s]" % [const, rest.join(", ")]
+      else
+        "[%s]" % [rest.join(", ")]
+      end
+    end
+  end
+
+  def process_kwrest exp # :nodoc:
+    _, name = exp
+
+    name.to_s
+  end
+
+  def process_hash_pat exp # :nodoc:
+    _, const, *rest = exp
+
+    if const then
+      const = process const
+      kwrest = process rest.pop if rest.last && rest.last.sexp_type == :kwrest
+
+      rest = rest.each_slice(2).map { |k, v|
+        k = process(k).delete_prefix ":"
+        v = process v
+
+        "#{k}: #{v}".strip
+      }
+
+      rest << kwrest if kwrest
+
+      rest.empty? ? "%s[]" % const : "%s[%s]" % [const, rest.join(", ")]
+    else
+      kwrest = process rest.pop if rest.last && rest.last.sexp_type == :kwrest
+
+      rest = rest.each_slice(2).map { |k, v|
+        k = process(k).delete_prefix ":"
+        v = process v
+
+        "#{k}: #{v}".strip
+      }
+
+      rest << kwrest if kwrest
+
+      rest.empty? ? "{}" : "{ %s }" % [rest.join(", ")]
+    end
+  end
+
+  def process_preexe exp # :nodoc:
+    raise "not yet PREEXE"
   end
 
   def process_if(exp) # :nodoc:
@@ -684,7 +794,8 @@ class Ruby2Ruby < SexpProcessor
 
   def process_ivar(exp) # :nodoc:
     _, name = exp
-    name.to_s
+
+    __var name
   end
 
   def process_kwsplat(exp)
@@ -695,9 +806,18 @@ class Ruby2Ruby < SexpProcessor
   def process_lasgn(exp) # :nodoc:
     _, name, value = exp
 
-    s = "#{name}"
-    s += " = #{process value}" if value
-    s
+    value = process value
+
+    if value then
+      "%s %s %s" % case context[1]
+                   when /_pat$/ then
+                     [value, "=>", name]
+                   else
+                     [name, "=", value]
+                   end
+    else
+      "%s" % [name]
+    end
   end
 
   def process_lit exp # :nodoc:
@@ -712,7 +832,8 @@ class Ruby2Ruby < SexpProcessor
 
   def process_lvar(exp) # :nodoc:
     _, name = exp
-    name.to_s
+
+    __var name
   end
 
   def process_masgn(exp) # :nodoc:
@@ -801,12 +922,20 @@ class Ruby2Ruby < SexpProcessor
 
   def process_op_asgn exp # :nodoc:
     # [[:lvar, :x], [:call, nil, :z, [:lit, 1]], :y, :"||"]
-    _, lhs, rhs, index, op = exp
 
-    lhs = process lhs
-    rhs = process rhs
+    case exp.length
+    when 4
+      raise "NOT YET: op_asgn 4"
+    when 5
+      _, lhs, rhs, index, op = exp
 
-    "#{lhs}.#{index} #{op}= #{rhs}"
+      lhs = process lhs
+      rhs = process rhs
+
+      "#{lhs}.#{index} #{op}= #{rhs}"
+    else
+      raise ArgumentError, "Don't know how to process this length: %p" % [exp]
+    end
   end
 
   def process_op_asgn1(exp) # :nodoc:
@@ -848,7 +977,15 @@ class Ruby2Ruby < SexpProcessor
   def process_or(exp) # :nodoc:
     _, lhs, rhs = exp
 
-    "(#{process lhs} or #{process rhs})"
+    lhs = process lhs
+    rhs = process rhs
+
+    case context[1]
+    when :in then
+      "(#{lhs} | #{rhs})"
+    else
+      "(#{lhs} or #{rhs})"
+    end
   end
 
   def process_postexe(exp) # :nodoc:
@@ -1037,10 +1174,6 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_when exp # :nodoc:
-    s(:when, s(:array, s(:lit, 1)),
-      s(:call, nil, :puts, s(:str, "something")),
-      s(:lasgn, :result, s(:str, "red")))
-
     _, lhs, *rhs = exp
 
     cond = process(lhs)[1..-2]
