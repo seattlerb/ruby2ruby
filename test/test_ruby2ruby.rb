@@ -811,22 +811,17 @@ end
 # s
 # t  new    2    3
 
-tr2r = File.read(__FILE__).split(/\n/)[start + 1..__LINE__ - 2].join("\n")
+tr2r = File.read(__FILE__).lines[start + 1..__LINE__ - 2].join
 ir2r = File.read("lib/ruby2ruby.rb")
 
 require "ruby_parser"
-
-def silent_eval ruby
-  old, $-w = $-w, nil
-  eval ruby
-  $-w = old
-end
 
 def morph_and_eval src, from, to, processor
   parser = RubyParser.for_current_ruby rescue RubyParser.new
   new_src = processor.new.process(parser.process(src.sub(from, to)))
 
-  silent_eval new_src
+  eval new_src
+
   new_src
 end
 
