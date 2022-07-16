@@ -4,16 +4,12 @@ $TESTING = true
 
 $: << "lib"
 
-require_relative "redundant_coverage" if ENV["COV"]
-
 require "minitest/autorun"
 require "ruby2ruby"
 require "pt_testcase"
 require "fileutils"
 require "tmpdir"
 require "ruby_parser" if ENV["CHECK_SEXPS"]
-
-RedundantCoverage.start if ENV["COV"]
 
 class R2RTestCase < ParseTreeTestCase
   def self.previous key
@@ -40,11 +36,6 @@ end
 start = __LINE__
 
 class TestRuby2Ruby < R2RTestCase
-  if ENV["COV"] then
-    MY_FILE = File.expand_path "../../lib/ruby2ruby.rb", __FILE__
-    extend RedundantCoverage::Wrapper
-  end
-
   def setup
     super
     @check_sexp = ENV["CHECK_SEXPS"]
