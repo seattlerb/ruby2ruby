@@ -4,12 +4,16 @@ $TESTING = true
 
 $: << "lib"
 
+require_relative "redundant_coverage" if ENV["COV"]
+
 require "minitest/autorun"
 require "ruby2ruby"
 require "pt_testcase"
 require "fileutils"
 require "tmpdir"
 require "ruby_parser" if ENV["CHECK_SEXPS"]
+
+RedundantCoverage.start if ENV["COV"]
 
 class R2RTestCase < ParseTreeTestCase
   def self.previous key
@@ -36,6 +40,11 @@ end
 start = __LINE__
 
 class TestRuby2Ruby < R2RTestCase
+  if ENV["COV"] then
+    MY_FILE = File.expand_path "../../lib/ruby2ruby.rb", __FILE__
+    extend RedundantCoverage::Wrapper
+  end
+
   def setup
     super
     @check_sexp = ENV["CHECK_SEXPS"]
@@ -391,30 +400,12 @@ class TestRuby2Ruby < R2RTestCase
                  "self[1, 2] = 3")
   end
 
-  def test_call_arglist_hash_first
-    inn = s(:call, nil, :method,
-            s(:hash, s(:lit, :a), s(:lit, 1)),
-            s(:lvar, :b))
-    out = "method({ :a => 1 }, b)"
-
-    assert_parse inn, out
-  end
-
   def test_call_arglist_hash_first_last
     inn = s(:call, nil, :method,
             s(:hash, s(:lit, :a), s(:lit, 1)),
             s(:lvar, :b),
             s(:hash, s(:lit, :c), s(:lit, 1)))
     out = "method({ :a => 1 }, b, :c => 1)"
-
-    assert_parse inn, out
-  end
-
-  def test_call_arglist_hash_last
-    inn = s(:call, nil, :method,
-            s(:lvar, :b),
-            s(:hash, s(:lit, :a), s(:lit, 1)))
-    out = "method(b, :a => 1)"
 
     assert_parse inn, out
   end
