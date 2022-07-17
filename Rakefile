@@ -79,6 +79,24 @@ task :debug => :isolate do
   puts process(ruby, file)
 end
 
+task :parse => :isolate do
+  require "ruby_parser"
+  require "pp"
+
+  parser = RubyParser.for_current_ruby
+
+  file = ENV["F"]
+  ruby = ENV["R"]
+
+  if ruby then
+    file = "env"
+  else
+    ruby = File.read file
+  end
+
+  pp parser.process(ruby, file)
+end
+
 task :bugs do
   sh "for f in bug*.rb ; do #{Gem.ruby} -S rake debug F=$f && rm $f ; done"
 end
