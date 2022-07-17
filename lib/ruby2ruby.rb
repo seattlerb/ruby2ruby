@@ -602,45 +602,31 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_find_pat exp # :nodoc:
-    # s(:find_pat, s(:const, :Symbol), :"*lhs", s(:array_pat, s(:lvar, :x)), :"*rhs")
-    # =>
-    # "Symbol(*lhs, x, *rhs)"
+    _, a, b, *c, d = exp
 
-    _, a, b, c, d = exp
+      a = process a               # might be nil
+      b = process b if Sexp === b
+      c = c.map { |sexp| process sexp }.join(", ")
+      d = process d if Sexp === d
 
-    a = process a
-    b = process b if Sexp === b
-    c = process c
-    d = process d if Sexp === d
-
-    "%s(%s, %s, %s)" % [a, b, c, d]
+      "%s[%s, %s, %s]" % [a, b, c, d]
   end
 
   def process_array_pat exp # :nodoc:
     _, const, *rest = exp
 
-    if context[1] == :find_pat then
-      raise ArgumentError, "dunno: %p" % [exp] if exp.length > 2
-      _, lhs = exp
-      process lhs
-    else
-      const = process const if const
+    const = process const if const
 
-      rest = rest.map { |sexp|
-        case sexp
-        when Sexp
-          process sexp
-        else
-          sexp
-        end
-      }
-
-      if const then
-        "%s[%s]" % [const, rest.join(", ")]
+    rest = rest.map { |sexp|
+      case sexp
+      when Sexp
+        process sexp
       else
-        "[%s]" % [rest.join(", ")]
+        sexp
       end
-    end
+    }
+
+    "%s[%s]" % [const, rest.join(", ")]
   end
 
   def process_kwrest exp # :nodoc:

@@ -745,21 +745,65 @@ class TestRuby2Ruby < R2RTestCase
     assert_case_in "[^@a, ^$b, ^@@c]", s(:array_pat, nil, s(:ivar, :@a), s(:gvar, :$b), s(:cvar, :@@c)) # HACK: really not sure about this one
   end
 
-  def test_case_in__find_pat
-    skip "not yet"
-
-    assert_case_in "(*a, :+, *b)", s(:find_pat, nil, :"*a", s(:array_pat, s(:lit, :+)), :"*b")
-    assert_case_in "NAH", s(:find_pat, nil, :*, s(:array_pat, s(:lit, :b), s(:lvar, :c)), :*)
-    assert_case_in "NAH", s(:find_pat, s(:const, :Symbol), :"*lhs", s(:array_pat, s(:lvar, :x)), :"*rhs")
+  def test_case_in__find_pat_1
+    assert_case_in "[*a, :+, *b]", s(:find_pat, nil, :"*a",
+                                     s(:lit, :+),
+                                     :"*b")
   end
 
-  def test_case_in_22
-    assert_case_in("Symbol[*lhs, x, *rhs]",
-                   s(:find_pat, s(:const, :Symbol),
-                     :"*lhs",
-                     s(:array_pat, s(:lasgn, :x)),
-                     :"*rhs"),
-                   "Symbol(*lhs, x, *rhs)",)
+  def test_case_in__find_pat_2
+    assert_case_in "[*, :b, ^c, *]", s(:find_pat, nil,
+                                       :*,
+                                       s(:lit, :b), s(:lvar, :c),
+                                       :*)
+  end
+
+  def test_case_in__find_pat_3
+    assert_case_in("Array(*b, n, { a: }, m, *a)",
+                   s(:find_pat,
+                     s(:const, :Array),
+                     :"*b",
+                     s(:lasgn, :n),
+                     s(:hash_pat, nil, s(:lit, :a), nil),
+                     s(:lasgn, :m),
+                     :"*a"),
+                   "Array[*b, n, { a: }, m, *a]")
+  end
+
+  def test_case_in__find_pat_4
+    assert_case_in("*b, n, { a: }, m, *a", s(:find_pat,
+                                             nil,
+                                             :"*b",
+                                             s(:lasgn, :n),
+                                             s(:hash_pat, nil, s(:lit, :a), nil),
+                                             s(:lasgn, :m),
+                                             :"*a"),
+                   "[*b, n, { a: }, m, *a]")
+  end
+
+  def test_case_in__find_pat_5
+    assert_case_in("Array(*lhs, ^b, *rhs)", s(:find_pat,
+                                              s(:const, :Array),
+                                              :"*lhs",
+                                              s(:lvar, :b),
+                                              :"*rhs"),
+                   "Array[*lhs, ^b, *rhs]")
+  end
+
+  def test_case_in__find_pat_6
+    assert_case_in("Array[*lhs, b, *rhs]", s(:find_pat,
+                                             s(:const, :Array),
+                                             :"*lhs",
+                                             s(:lasgn, :b),
+                                             :"*rhs"))
+  end
+
+  def test_case_in__find_pat_7
+    assert_case_in("Array[*lhs, :b, *rhs]", s(:find_pat,
+                                              s(:const, :Array),
+                                              :"*lhs",
+                                              s(:lit, :b),
+                                              :"*rhs"))
   end
 
   def test_case_in_10
