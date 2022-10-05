@@ -430,6 +430,20 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
+  def test_forward_args__defn
+    inn = s(:defn, :x, s(:args, :a, s(:forward_args)), s(:nil))
+    out = "def x(a, ...)\n  # do nothing\nend"
+
+    assert_parse inn, out
+  end
+
+  def test_forward_args__call
+    inn = s(:call, nil, :y, s(:forward_args))
+    out = "y(...)"
+
+    assert_parse inn, out
+  end
+
   def test_shadow_block_args
     inn = s(:iter,
             s(:call, nil, :a),
@@ -514,6 +528,13 @@ class TestRuby2Ruby < R2RTestCase
     inn = s(:match3, s(:lit, //), s(:lasgn, :y, s(:call, nil, :x)))
     out = "(y = x) =~ //"
     # "y = x =~ //", which matches on x and assigns to y (not what sexp says).
+    assert_parse inn, out
+  end
+
+  def test_preexe
+    inn = s(:iter, s(:preexe), 0, s(:block, s(:lit, 1), s(:lit, 2), s(:lit, 3)))
+    out = "BEGIN {\n  1\n  2\n  3\n}"
+
     assert_parse inn, out
   end
 

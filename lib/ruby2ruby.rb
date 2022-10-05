@@ -136,6 +136,8 @@ class Ruby2Ruby < SexpProcessor
         when :shadow then
           shadow << arg.sexp_body
           next
+        when :forward_args then
+          "..."
         else
           raise "unknown arg type #{arg.first.inspect}"
         end
@@ -542,6 +544,10 @@ class Ruby2Ruby < SexpProcessor
     result.join "\n"
   end
 
+  def process_forward_args exp
+    "..."
+  end
+
   def process_gasgn exp # :nodoc:
     process_iasgn exp
   end
@@ -669,7 +675,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_preexe exp # :nodoc:
-    raise "not yet PREEXE"
+    "BEGIN"
   end
 
   def process_if(exp) # :nodoc:
@@ -714,6 +720,8 @@ class Ruby2Ruby < SexpProcessor
     "->"
   end
 
+  MUST_BE_CURLY = %w[ BEGIN END ]
+
   def process_iter(exp) # :nodoc:
     _, iter, args, body = exp
 
@@ -731,7 +739,7 @@ class Ruby2Ruby < SexpProcessor
              " |#{process(args)[1..-2]}|"
            end
 
-    b, e = if iter == "END" then
+    b, e = if MUST_BE_CURLY.include? iter then
              %w[ { } ]
            else
              %w[ do end ]
