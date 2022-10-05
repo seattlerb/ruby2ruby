@@ -1,3 +1,19 @@
+=== 2.5.0 / 2022-10-04
+
+* 5 minor enhancements:
+
+  * Added support for (most?) pattern matching.
+  * Added support for **kwrest.
+  * Added support for forward args (...), defn and call.
+  * Added support for preexe (BEGIN { ... }).
+  * Support ruby 3.1 hash shorthand syntax. (presidentbeef)
+
+* 3 bug fixes:
+
+  * Fix generation of case w/ no else.
+  * Fixed a bug block shadow vars (they're grouped)
+  * Fixed find_pat up (after fixing a find_pat bug in ruby_parser).
+
 === 2.4.4 / 2019-09-24
 
 * 1 bug fix:
