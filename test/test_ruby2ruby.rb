@@ -42,6 +42,15 @@ class TestRuby2Ruby < R2RTestCase
     @processor = Ruby2Ruby.new
   end
 
+  # some things don't work in earlier rubies... oh well.
+  def skip30
+    skip unless RUBY_VERSION > "3.0"
+  end
+
+  def skip31
+    skip unless RUBY_VERSION > "3.1"
+  end
+
   def do_not_check_sexp!
     @check_sexp = false
   end
@@ -438,8 +447,10 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_forward_args__call
-    inn = s(:call, nil, :y, s(:forward_args))
-    out = "y(...)"
+    skip31
+
+    inn = s(:defn, :x, s(:args, s(:forward_args)), s(:call, nil, :y, s(:forward_args)))
+    out = "def x(...)\n  y(...)\nend"
 
     assert_parse inn, out
   end
@@ -763,16 +774,22 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_case_in__array_pat_19
+    skip31
+
     assert_case_in "[^@a, ^$b, ^@@c]", s(:array_pat, nil, s(:ivar, :@a), s(:gvar, :$b), s(:cvar, :@@c)) # HACK: really not sure about this one
   end
 
   def test_case_in__find_pat_1
+    skip30
+
     assert_case_in "[*a, :+, *b]", s(:find_pat, nil, :"*a",
                                      s(:lit, :+),
                                      :"*b")
   end
 
   def test_case_in__find_pat_2
+    skip30
+
     assert_case_in "[*, :b, ^c, *]", s(:find_pat, nil,
                                        :*,
                                        s(:lit, :b), s(:lvar, :c),
@@ -780,6 +797,8 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_case_in__find_pat_3
+    skip30
+
     assert_case_in("Array(*b, n, { a: }, m, *a)",
                    s(:find_pat,
                      s(:const, :Array),
@@ -792,6 +811,8 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_case_in__find_pat_4
+    skip30
+
     assert_case_in("*b, n, { a: }, m, *a", s(:find_pat,
                                              nil,
                                              :"*b",
@@ -803,6 +824,8 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_case_in__find_pat_5
+    skip30
+
     assert_case_in("Array(*lhs, ^b, *rhs)", s(:find_pat,
                                               s(:const, :Array),
                                               :"*lhs",
