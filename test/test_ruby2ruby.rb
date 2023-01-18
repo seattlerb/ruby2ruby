@@ -1110,7 +1110,7 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def ruby_parser
-    parser = RubyParser.for_current_ruby
+    parser = RubyParser.latest
 
     %i[a b c d].each do |v|
       parser.env[v] = :lvar
@@ -1178,7 +1178,7 @@ ir2r = File.read("lib/ruby2ruby.rb")
 require "ruby_parser"
 
 def morph_and_eval src, from, to, processor
-  parser = RubyParser.for_current_ruby rescue RubyParser.new
+  parser = RubyParser.latest
   new_src = processor.new.process(parser.process(src.sub(from, to)))
 
   eval new_src
