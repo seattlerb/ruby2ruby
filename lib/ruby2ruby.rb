@@ -475,7 +475,7 @@ class Ruby2Ruby < SexpProcessor
 
     options = re_opt rest.pop if Integer === rest.last
 
-    "/" << util_dthing(:dregx, s(:dregx, str, *rest)) << "/#{options}"
+    +"/" << util_dthing(:dregx, s(:dregx, str, *rest)) << "/#{options}"
   end
 
   def process_dregx_once(exp) # :nodoc:
@@ -675,7 +675,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_preexe exp # :nodoc:
-    "BEGIN"
+    +"BEGIN"
   end
 
   def process_if(exp) # :nodoc:
@@ -717,7 +717,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_lambda exp # :nodoc:
-    "->"
+    +"->"
   end
 
   MUST_BE_CURLY = %w[ BEGIN END ]
@@ -983,11 +983,11 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_postexe(exp) # :nodoc:
-    "END"
+    +"END"
   end
 
   def process_redo(exp) # :nodoc:
-    "redo"
+    +"redo"
   end
 
   def process_resbody exp # :nodoc:
