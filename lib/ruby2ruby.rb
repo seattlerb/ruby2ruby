@@ -475,7 +475,7 @@ class Ruby2Ruby < SexpProcessor
 
     options = re_opt rest.pop if Integer === rest.last
 
-    "/" << util_dthing(:dregx, s(:dregx, str, *rest)) << "/#{options}"
+    "/" + util_dthing(:dregx, s(:dregx, str, *rest)) << "/#{options}"
   end
 
   def process_dregx_once(exp) # :nodoc:
@@ -502,7 +502,7 @@ class Ruby2Ruby < SexpProcessor
     ens  = process(ens) || "# do nothing"
     ens = "begin\n#{ens}\nend\n" if ens =~ /(^|\n)rescue/
 
-    body.sub!(/\n\s*end\z/, "")
+    body = body.sub(/\n\s*end\z/, "")
     body = indent(body) unless body =~ /(^|\n)rescue/
 
     "#{body}\nensure\n#{indent ens}"
@@ -699,11 +699,12 @@ class Ruby2Ruby < SexpProcessor
         return r if r and (@indent + r).size < LINE_LENGTH and r !~ /\n/
       end
 
-      r = "if #{c} then\n#{indent(t)}\n"
+      r = []
+      r << "if #{c} then\n#{indent(t)}\n"
       r << "else\n#{indent(f)}\n" if f
       r << "end"
 
-      r
+      r.join
     elsif f
       unless expand then
         r = "#{f} unless #{c}"
@@ -745,7 +746,7 @@ class Ruby2Ruby < SexpProcessor
              %w[ do end ]
            end
 
-    iter.sub!(/\(\)$/, "")
+    iter = iter.sub(/\(\)$/, "")
 
     # REFACTOR: ugh
     result = []
