@@ -1,3 +1,9 @@
+=== 2.5.1 / 2024-07-08
+
+* 1 bug fix:
+
+  * Fix errors created when string literals are frozen. (byroot + zenspider)
+
 === 2.5.0 / 2022-10-04
 
 * 5 minor enhancements:
