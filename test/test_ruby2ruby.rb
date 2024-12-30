@@ -1067,6 +1067,13 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
+  def test_op_asgn_4
+    inn = s(:op_asgn, s(:colon3, :X), :"&", s(:lit, 1))
+
+    out = "::X &= 1"
+    assert_parse inn, out
+  end
+
   def test_rescue_block
     inn = s(:rescue,
             s(:call, nil, :alpha),

@@ -916,11 +916,14 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_op_asgn exp # :nodoc:
-    # [[:lvar, :x], [:call, nil, :z, [:lit, 1]], :y, :"||"]
-
     case exp.length
     when 4
-      raise "NOT YET: op_asgn 4"
+      _, lhs, op, rhs = exp
+
+      lhs = process lhs
+      rhs = process rhs
+
+      "#{lhs} #{op}= #{rhs}"
     when 5
       _, lhs, rhs, index, op = exp
 
