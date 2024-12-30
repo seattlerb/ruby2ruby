@@ -135,8 +135,6 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_hash_shorthand_invalid_key_type
-    do_not_check_sexp!
-
     inn = s(:hash, s(:str, 'k'), nil)
     out = '{ k: }'
     assert_raises do
@@ -329,8 +327,6 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_dregx_slash
-    do_not_check_sexp!
-
     inn = util_thingy(:dregx)
     out = '/a"b#{(1 + 1)}c"d\/e/'
     assert_parse inn, out, /a"b2c"d\/e/
@@ -349,8 +345,6 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_lit_regexp_slash
-    do_not_check_sexp! # dunno why on this one
-
     assert_parse s(:lit, /blah\/blah/), '/blah\/blah/', /blah\/blah/
   end
 
@@ -1103,7 +1097,7 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_unless_vs_if_not
-    do_not_check_sexp! # TODO: remove? dunno if that's possible w/ this one
+    do_not_check_sexp! # dunno if it's possible to remove this one
 
     rb1 = "a unless b"
     rb2 = "a if (not b)"
