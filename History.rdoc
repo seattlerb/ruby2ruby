@@ -1,3 +1,9 @@
+=== 2.5.2 / 2025-03-25
+
+* 1 bug fix:
+
+  * Added support for 3 slot op_asgn (eg `a &= 1`)
+
 === 2.5.1 / 2024-07-08
 
 * 1 bug fix:
