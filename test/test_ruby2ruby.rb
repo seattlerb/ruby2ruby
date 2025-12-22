@@ -9,7 +9,21 @@ require "ruby2ruby"
 require "pt_testcase"
 require "fileutils"
 require "tmpdir"
-require "ruby_parser" if ENV["CHECK_SEXPS"]
+require "prism"
+
+class NotRubyParser < Prism::Translation::RubyParser
+  attr_accessor :scopes
+
+  def initialize scopes:nil
+    super()
+    self.scopes = [scopes] if scopes
+  end
+
+  # overridden from prism to add scopes arg
+  def parse(source, filepath = "(string)")
+    translate(Prism.parse(source, filepath:, partial_script: true, scopes:), filepath)
+  end
+end
 
 class R2RTestCase < ParseTreeTestCase
   def self.previous key
@@ -42,13 +56,8 @@ class TestRuby2Ruby < R2RTestCase
     @processor = Ruby2Ruby.new
   end
 
-  # some things don't work in earlier rubies... oh well.
-  def skip30
-    skip unless RUBY_VERSION > "3.0"
-  end
-
-  def skip31
-    skip unless RUBY_VERSION > "3.1"
+  def skip_prism
+    skip "not fully happy with prism yet"
   end
 
   def do_not_check_sexp!
@@ -183,11 +192,11 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def assert_str exp, src
-    assert_equal s(:str, exp), RubyParser.new.process(src)
+    assert_equal s(:str, exp), NotRubyParser.new.process(src)
   end
 
   def assert_dstr exp, int, src
-    assert_equal s(:dstr, exp, s(:evstr, int).compact), RubyParser.new.process(src)
+    assert_equal s(:dstr, exp, s(:evstr, int).compact), NotRubyParser.new.process(src)
   end
 
   def assert_r2r exp, sexp
@@ -195,7 +204,7 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def assert_rt src, exp = src.dup
-    assert_equal exp, Ruby2Ruby.new.process(RubyParser.new.parse(src))
+    assert_equal exp, Ruby2Ruby.new.process(NotRubyParser.new.parse(src))
   end
 
   def test_bug_033
@@ -441,7 +450,6 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_forward_args__call
-    skip31
 
     inn = s(:defn, :x, s(:args, s(:forward_args)), s(:call, nil, :y, s(:forward_args)))
     out = "def x(...)\n  y(...)\nend"
@@ -740,7 +748,12 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_case_in__array_pat_04
-    assert_case_in "[[:b, ^c], [:d, ^e]]", s(:array_pat, nil, s(:array_pat, nil, s(:lit, :b), s(:lvar, :c)), s(:array_pat, nil, s(:lit, :d), s(:lvar, :e)))
+    pt = s(:array_pat,
+           nil,
+           s(:array_pat, nil, s(:lit, :b), s(:lvar, :c)),
+           s(:array_pat, nil, s(:lit, :d), s(:lvar, :a)))
+
+    assert_case_in "[[:b, ^c], [:d, ^a]]", pt
   end
 
   def test_case_in__array_pat_06
@@ -768,22 +781,16 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_case_in__array_pat_19
-    skip31
-
     assert_case_in "[^@a, ^$b, ^@@c]", s(:array_pat, nil, s(:ivar, :@a), s(:gvar, :$b), s(:cvar, :@@c)) # HACK: really not sure about this one
   end
 
   def test_case_in__find_pat_1
-    skip30
-
     assert_case_in "[*a, :+, *b]", s(:find_pat, nil, :"*a",
                                      s(:lit, :+),
                                      :"*b")
   end
 
   def test_case_in__find_pat_2
-    skip30
-
     assert_case_in "[*, :b, ^c, *]", s(:find_pat, nil,
                                        :*,
                                        s(:lit, :b), s(:lvar, :c),
@@ -791,35 +798,30 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def test_case_in__find_pat_3
-    skip30
-
-    assert_case_in("Array(*b, n, { a: }, m, *a)",
+    assert_case_in("Array(*b, n, { a: }, m, *c)",
                    s(:find_pat,
                      s(:const, :Array),
                      :"*b",
                      s(:lasgn, :n),
                      s(:hash_pat, nil, s(:lit, :a), nil),
                      s(:lasgn, :m),
-                     :"*a"),
-                   "Array[*b, n, { a: }, m, *a]")
+                     :"*c"),
+                   "Array[*b, n, { a: }, m, *c]")
   end
 
   def test_case_in__find_pat_4
-    skip30
-
-    assert_case_in("*b, n, { a: }, m, *a", s(:find_pat,
-                                             nil,
-                                             :"*b",
-                                             s(:lasgn, :n),
-                                             s(:hash_pat, nil, s(:lit, :a), nil),
-                                             s(:lasgn, :m),
-                                             :"*a"),
-                   "[*b, n, { a: }, m, *a]")
+    assert_case_in("*b, n, { a: }, m, *c",
+                   s(:find_pat,
+                     nil,
+                     :"*b",
+                     s(:lasgn, :n),
+                     s(:hash_pat, nil, s(:lit, :a), nil),
+                     s(:lasgn, :m),
+                     :"*c"),
+                   "[*b, n, { a: }, m, *c]")
   end
 
   def test_case_in__find_pat_5
-    skip30
-
     assert_case_in("Array(*lhs, ^b, *rhs)", s(:find_pat,
                                               s(:const, :Array),
                                               :"*lhs",
@@ -943,10 +945,10 @@ class TestRuby2Ruby < R2RTestCase
            s(:array_pat,
              nil,
              s(:lit, :d),
-             s(:lvar, :e)),
+             s(:lvar, :a)),
           )
 
-    assert_case_in "[[:b, c], [:d, ^e]]", pt
+    assert_case_in "[[:b, c], [:d, ^a]]", pt
   end
 
   def test_case_in__hash_pat_00
@@ -1111,13 +1113,7 @@ class TestRuby2Ruby < R2RTestCase
   end
 
   def ruby_parser
-    parser = RubyParser.latest
-
-    %i[a b c d].each do |v|
-      parser.env[v] = :lvar
-    end
-
-    parser
+    NotRubyParser.new scopes: %i[a b c d]
   end
 
   def assert_parse sexp, expected_ruby, expected_eval = nil
@@ -1179,8 +1175,7 @@ ir2r = File.read("lib/ruby2ruby.rb")
 require "ruby_parser"
 
 def morph_and_eval src, from, to, processor
-  parser = RubyParser.latest
-  new_src = processor.new.process(parser.process(src.sub(from, to)))
+  new_src = processor.new.process(NotRubyParser.new.process(src.sub(from, to)))
 
   eval new_src
 

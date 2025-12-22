@@ -350,8 +350,14 @@ class Ruby2Ruby < SexpProcessor
     end
   end
 
+  def comments exp # :nodoc:
+    comments = exp.comments
+    comments += "\n" unless comments.end_with?("\n") if comments
+    comments
+  end
+
   def process_class exp # :nodoc:
-    "#{exp.comments}class #{util_module_or_class(exp, true)}"
+    "#{comments exp}class #{util_module_or_class(exp, true)}"
   end
 
   def process_colon2 exp # :nodoc:
@@ -411,7 +417,7 @@ class Ruby2Ruby < SexpProcessor
   def process_defn(exp) # :nodoc:
     _, name, args, *body = exp
 
-    comm = exp.comments
+    comm = comments exp
     args = process args
     args = "" if args == "()"
 
@@ -887,7 +893,7 @@ class Ruby2Ruby < SexpProcessor
   end
 
   def process_module(exp) # :nodoc:
-    "#{exp.comments}module #{util_module_or_class(exp)}"
+    "#{comments exp}module #{util_module_or_class(exp)}"
   end
 
   def process_next(exp) # :nodoc:

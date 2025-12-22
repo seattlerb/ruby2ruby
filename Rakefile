@@ -17,7 +17,11 @@ Hoe.spec 'ruby2ruby' do
   license "MIT"
 
   dependency "sexp_processor", "~> 4.6"
-  dependency "ruby_parser",    "~> 3.1"
+  dependency "prism",          "~> 1.7", :dev
+
+  require_ruby_version ">= 3.2"
+
+  self.isolate_multiruby = true
 end
 
 def process ruby, file="stdin"
