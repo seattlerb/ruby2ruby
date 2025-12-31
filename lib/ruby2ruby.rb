@@ -411,7 +411,11 @@ class Ruby2Ruby < SexpProcessor
 
   def process_defined exp # :nodoc:
     _, rhs = exp
-    "defined? #{process rhs}"
+    if context[1] == :if then # HACK?
+      "defined?(#{process rhs})"
+    else
+      "defined? #{process rhs}"
+    end
   end
 
   def process_defn(exp) # :nodoc:

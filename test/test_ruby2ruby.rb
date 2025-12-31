@@ -693,6 +693,12 @@ class TestRuby2Ruby < R2RTestCase
     assert_parse inn, out
   end
 
+  def test_if_defined
+    inn = s(:if, s(:defined, s(:const, :Foo)), s(:lit, 1), s(:lit, 2))
+    out = "defined?(Foo) ? (1) : (2)" # TODO: remove parens on 1/2
+    assert_parse inn, out
+  end
+
   def test_if_empty
     inn = s(:if, s(:call, nil, :x), nil, nil)
     out = "if x then\n  # do nothing\nend"
