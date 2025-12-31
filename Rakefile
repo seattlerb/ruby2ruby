@@ -4,7 +4,6 @@ require 'rubygems'
 require 'hoe'
 
 Hoe.add_include_dirs("lib",
-                     "../../ruby_parser/dev/lib",
                      "../../sexp_processor/dev/lib")
 
 Hoe.plugin :seattlerb
@@ -25,10 +24,13 @@ Hoe.spec 'ruby2ruby' do
 end
 
 def process ruby, file="stdin"
-  require "ruby_parser"
+  require "prism"
+  require "prism/translation/ruby_parser"
   require "ruby2ruby"
 
-  parser    = RubyParser.new
+  not_ruby_parser = Class.new Prism::Translation::RubyParser
+
+  parser    = not_ruby_parser.new
   ruby2ruby = Ruby2Ruby.new
 
   begin
@@ -44,7 +46,6 @@ end
 
 task :stress do
   $: << "lib"
-  $: << "../../ruby_parser/dev/lib"
   require "pp"
 
   files = Dir["../../*/dev/**/*.rb"].reject { |s| s =~ %r%/gems/% }
@@ -84,10 +85,13 @@ task :debug => :isolate do
 end
 
 task :parse => :isolate do
-  require "ruby_parser"
+  require "prism"
+  require "prism/translation/ruby_parser"
   require "pp"
 
-  parser = RubyParser.for_current_ruby
+  not_ruby_parser = Class.new Prism::Translation::RubyParser
+
+  parser = not_ruby_parser.new
 
   file = ENV["F"]
   ruby = ENV["R"]

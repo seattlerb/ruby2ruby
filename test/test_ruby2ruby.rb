@@ -10,8 +10,10 @@ require "pt_testcase"
 require "fileutils"
 require "tmpdir"
 require "prism"
+require "timeout" # remove once upstreamed
+# require "prism/translation/ruby_parser" # not until upstreamed
 
-class NotRubyParser < Prism::Translation::RubyParser
+class NotRubyParser < Prism::Translation::RubyParser # remove once upstreamed
   attr_accessor :scopes
 
   def initialize scopes:nil
@@ -1171,8 +1173,6 @@ end
 
 tr2r = File.read(__FILE__).lines[start + 1..__LINE__ - 2].join
 ir2r = File.read("lib/ruby2ruby.rb")
-
-require "ruby_parser"
 
 def morph_and_eval src, from, to, processor
   new_src = processor.new.process(NotRubyParser.new.process(src.sub(from, to)))
