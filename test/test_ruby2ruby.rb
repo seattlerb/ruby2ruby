@@ -1002,6 +1002,16 @@ class TestRuby2Ruby < R2RTestCase
     assert_case_in "Object[b: 1]", s(:hash_pat, s(:const, :Object), s(:lit, :b), s(:lit, 1))
   end
 
+  def test_case_in_body_does_not_pin_variables
+    inn = s(:case, s(:call, nil, :x),
+            s(:in,
+              s(:array_pat, nil, s(:lasgn, :a), s(:lasgn, :b)),
+              s(:lvar, :a)),
+            nil)
+    out = "case x\nin [a, b] then\n  a\nend"
+    assert_parse inn, out
+  end
+
   def test_interpolation_and_escapes
     # log_entry = "  \e[#{message_color}m#{message}\e[0m   "
     inn = s(:lasgn, :log_entry,

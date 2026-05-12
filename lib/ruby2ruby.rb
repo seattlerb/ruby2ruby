@@ -609,7 +609,11 @@ class Ruby2Ruby < SexpProcessor
     _, lhs, *rhs = exp
 
     cond = process lhs
-    body = rhs.compact.map { |sexp| indent process sexp }
+    body = rhs.compact.map { |sexp|
+      in_context :in_body do
+        indent process sexp
+      end
+    }
 
     body << indent("# do nothing") if body.empty?
     body = body.join "\n"
