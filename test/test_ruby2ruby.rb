@@ -11,7 +11,20 @@ require "fileutils"
 require "tmpdir"
 require "prism"
 require "timeout" # remove once upstreamed
-# require "prism/translation/ruby_parser" # not until upstreamed
+require "prism/translation/ruby_parser" # not until upstreamed
+
+class Prism::Translation::RubyParser
+  module TweakIt
+    def visit_it_local_variable_read_node(node) # TODO: upstream
+      s(node, :lvar, :it)
+    end
+
+    def visit_local_variable_read_node(node)
+      s(node, :lvar, node.name)
+    end
+  end
+  Compiler.prepend TweakIt
+end
 
 class NotRubyParser < Prism::Translation::RubyParser # remove once upstreamed
   attr_accessor :scopes
@@ -56,10 +69,6 @@ class TestRuby2Ruby < R2RTestCase
     super
     @check_sexp = ENV["CHECK_SEXPS"]
     @processor = Ruby2Ruby.new
-  end
-
-  def skip_prism
-    skip "not fully happy with prism yet"
   end
 
   def do_not_check_sexp!
@@ -207,6 +216,18 @@ class TestRuby2Ruby < R2RTestCase
 
   def assert_rt src, exp = src.dup
     assert_equal exp, Ruby2Ruby.new.process(NotRubyParser.new.parse(src))
+  end
+
+  def test_block__lvar_it
+    inn = s(:iter, s(:call, nil, :fn), 0, s(:call, nil, :puts, s(:lvar, :it)))
+    out = "fn { puts(it) }"
+    assert_parse inn, out
+  end
+
+  def test_block__lvar__1
+    inn = s(:iter, s(:call, nil, :fn), 0, s(:call, nil, :puts, s(:lvar, :_1)))
+    out = "fn { puts(_1) }"
+    assert_parse inn, out
   end
 
   def test_bug_033
