@@ -1,3 +1,10 @@
+=== 2.6.2 / 2026-09-19
+
+* 2 bug fixes:
+
+  * Fixed block lvar processing for it, _1, etc.
+  * Fixed variable references in pattern match body. (ofedoren)
+
 === 2.6.1 / 2026-01-26
 
 * 1 bug fix:
